@@ -1,0 +1,8 @@
+{
+  "name": "Bounce Back",
+  "description": "A handcrafted 2D open-world adventure RPG across the recovering land of Aetheria. Explore five distinct regions, restore communities, master unique characters, play mini-games, and purify ancient guardians.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

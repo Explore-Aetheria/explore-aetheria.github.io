@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-display: 'Fraunces', Georgia, serif;
+    --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  }
+
+  html,
+  body,
+  #root {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    font-family: var(--font-sans);
+    background-color: #0e151b;
+    color: #f3efe6;
+  }
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-mono-tabular {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.pixel-canvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+canvas {
+  image-rendering: pixelated;
+}
+
+/* Custom subtle scrollbar for game journals */
+.game-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.game-scroll::-webkit-scrollbar-track {
+  background: rgba(15, 23, 30, 0.5);
+}
+.game-scroll::-webkit-scrollbar-thumb {
+  background: rgba(196, 169, 114, 0.35);
+  border-radius: 3px;
+}
+.game-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(196, 169, 114, 0.6);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
