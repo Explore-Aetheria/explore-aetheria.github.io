@@ -7,6 +7,7 @@ import { PauseAndEndingModal } from './components/modals/PauseAndEndingModal';
 import { WorldMapModal } from './components/modals/WorldMapModal';
 import { PhaserViewport } from './components/PhaserViewport';
 import { TitleScreen } from './components/TitleScreen';
+import { gameBridge } from './game/GameBridge';
 import { GameProvider, useGame } from './state/GameStore';
 
 const GameShell: React.FC = () => {
@@ -19,6 +20,7 @@ const GameShell: React.FC = () => {
     setActiveDialogueNpcId,
     save,
     hud,
+    pushToast,
   } = useGame();
 
   useEffect(() => {
@@ -63,6 +65,24 @@ const GameShell: React.FC = () => {
         setActiveModal(activeModal === 'UPGRADES' ? null : 'UPGRADES');
       } else if (e.code === 'KeyB') {
         setActiveModal(activeModal === 'JOURNAL' ? null : 'JOURNAL');
+      } else if (e.code === 'KeyK') {
+        setActiveModal(activeModal === 'COMPANIONS' ? null : 'COMPANIONS');
+      } else if (e.code === 'KeyP' && !activeModal) {
+        if (hud.interiorId) {
+          pushToast('Step outdoors to photograph wildlife and horizons!');
+        } else {
+          gameBridge.takePhoto();
+        }
+      } else if (e.code === 'KeyV' && !activeModal) {
+        if (!save.airship.unlocked) {
+          pushToast('Reopen Brightfall Railway & Skyport to unlock the Skywing Airship.');
+        } else if (hud.interiorId) {
+          pushToast('Step outdoors before launching the Airship.');
+        } else if (hud.isFlying) {
+          gameBridge.landAirship();
+        } else {
+          gameBridge.boardAirship();
+        }
       }
     };
 
@@ -76,7 +96,10 @@ const GameShell: React.FC = () => {
     activeDialogueNpcId,
     setActiveDialogueNpcId,
     save.settings.keyBindings.map,
+    save.airship.unlocked,
     hud.interiorId,
+    hud.isFlying,
+    pushToast,
   ]);
 
   return (

@@ -73,6 +73,18 @@ export const DialogueOverlay: React.FC = () => {
         setActiveDialogueNpcId(null);
         setActiveModal('HOUSE');
         return;
+      } else if (act.type === 'OPEN_VILLAGE') {
+        setActiveDialogueNpcId(null);
+        setActiveModal('VILLAGE');
+        return;
+      } else if (act.type === 'OPEN_AIRSHIP') {
+        setActiveDialogueNpcId(null);
+        setActiveModal('AIRSHIP');
+        return;
+      } else if (act.type === 'OPEN_EVENTS') {
+        setActiveDialogueNpcId(null);
+        setActiveModal('EVENTS');
+        return;
       } else if (act.type === 'OPEN_CHARACTERS') {
         setActiveDialogueNpcId(null);
         setActiveModal('CHARACTERS');
@@ -81,10 +93,24 @@ export const DialogueOverlay: React.FC = () => {
         setActiveDialogueNpcId(null);
         gameBridge.boardBoat();
         return;
+      } else if (act.type === 'BOARD_AIRSHIP') {
+        setActiveDialogueNpcId(null);
+        gameBridge.boardAirship();
+        return;
       } else if (act.type === 'UPGRADE_BOAT') {
         upgradeBoat();
         setActiveDialogueNpcId(null);
         return;
+      } else if (act.type === 'ENTER_ZONE') {
+        setActiveDialogueNpcId(null);
+        gameBridge.enterZone(act.interiorId);
+        return;
+      } else if (act.type === 'CHALLENGE_GUARDIAN') {
+        setActiveDialogueNpcId(null);
+        gameBridge.startGuardianEncounter(act.guardianId);
+        return;
+      } else if (act.type === 'GIVE_ITEM') {
+        gameBridge.getCallbacks()?.onCollectItem(`dlg_${act.itemId}_${Date.now()}`, act.itemId, act.quantity);
       } else if (act.type === 'SLEEP_TIME') {
         sleepUntil(act.targetHour);
         setActiveDialogueNpcId(null);

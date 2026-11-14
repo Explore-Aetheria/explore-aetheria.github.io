@@ -88,7 +88,7 @@ export const TitleScreen: React.FC = () => {
         </div>
 
         <p className="text-[#dce4ea] text-base leading-relaxed max-w-lg mb-8">
-          After the Great Fall dimmed Aetheria’s lanterns, its towns and outer islands fell quiet. Explore twelve interconnected regions across sea and sky, rebuild communities, master eight playable companions, and prove a setback never writes the final chapter.
+          After the Great Fall dimmed Aetheria’s lanterns, its towns and outer islands fell quiet. Explore nineteen interconnected regions across sea, subterranean depths, drifting isles, and skyborne horizons, rebuild communities, master ten playable companions, and prove a setback never writes the final chapter.
         </p>
 
         {/* Primary Menu Actions */}
@@ -143,7 +143,7 @@ export const TitleScreen: React.FC = () => {
 
       {/* Single Flat Control-Hint Line */}
       <div className="relative z-10 px-8 md:px-16 py-4 border-t border-white/10 bg-[#0b1117]/75 flex flex-wrap items-center justify-between gap-4 text-xs text-[#b8c4ce]">
-        <span>WASD Move · Shift Sprint · Space Dash · E Interact · Q Ability · F / Click Bolt · G Gear · M Map · Esc Pause</span>
+        <span>WASD Move · Shift Sprint · Space Dash · E Interact · Q Ability · V Airship · P Photo · G Gear · M Map · Esc Pause</span>
         <span className="text-[#94a3b0]">Press Enter to begin</span>
       </div>
     </div>

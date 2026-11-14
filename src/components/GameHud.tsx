@@ -3,9 +3,12 @@ import {
   Anchor,
   Backpack,
   BookOpen,
+  Camera,
   Compass,
+  Image as ImageIcon,
   Map as MapIcon,
   Pause,
+  Plane,
   ScrollText,
   Sparkles,
   Swords,
@@ -16,9 +19,11 @@ import {
 } from 'lucide-react';
 import { soundEngine } from '../audio/SoundEngine';
 import { CHARACTERS } from '../data/characters';
+import { COMPANIONS } from '../data/companions';
 import { INVENTORY_CATALOG } from '../data/progression';
 import { QUESTS } from '../data/quests';
-import { getCharacterPortraitDataUrl, TILE_SIZE } from '../game/PixelArtGenerator';
+import { gameBridge } from '../game/GameBridge';
+import { getCharacterPortraitDataUrl, getCompanionPortraitDataUrl, TILE_SIZE } from '../game/PixelArtGenerator';
 import { useGame } from '../state/GameStore';
 
 function formatClock(hourFloat: number): string {
@@ -50,6 +55,7 @@ export const GameHud: React.FC = () => {
     save,
     hud,
     toasts,
+    pushToast,
     updateSettings,
     eatFoodItem,
     getRegionRestorationPercent,
@@ -62,6 +68,12 @@ export const GameHud: React.FC = () => {
   const portraitUrl = useMemo(
     () => getCharacterPortraitDataUrl(save.activeCharacter, outfit),
     [save.activeCharacter, outfit]
+  );
+
+  const activeCompanionDef = save.activeCompanion ? COMPANIONS[save.activeCompanion] : null;
+  const companionPortraitUrl = useMemo(
+    () => (save.activeCompanion ? getCompanionPortraitDataUrl(save.activeCompanion) : ''),
+    [save.activeCompanion]
   );
 
   const activeQuest = useMemo(() => {
@@ -110,14 +122,27 @@ export const GameHud: React.FC = () => {
       <div className="flex items-start justify-between gap-3">
         {/* Top-Left: Character Portrait, HP/Energy/Hunger & Quick Food */}
         <div className="pointer-events-auto flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-[#111921]/92 border border-[#2c3b4a] shadow-lg">
-          <button
-            type="button"
-            onClick={() => setActiveModal(activeModal === 'CHARACTERS' ? null : 'CHARACTERS')}
-            className="relative w-12 h-12 rounded-lg bg-[#1c2936] border border-[#3a4f63] overflow-hidden shrink-0 cursor-pointer hover:border-[#e0a943] transition-colors"
-            title="Switch Character [C]"
-          >
-            <img src={portraitUrl} alt={charDef.name} className="w-full h-full object-contain pixel-canvas" />
-          </button>
+          <div className="flex flex-col items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={() => setActiveModal(activeModal === 'CHARACTERS' ? null : 'CHARACTERS')}
+              className="relative w-12 h-12 rounded-lg bg-[#1c2936] border border-[#3a4f63] overflow-hidden shrink-0 cursor-pointer hover:border-[#e0a943] transition-colors"
+              title="Switch Character [C]"
+            >
+              <img src={portraitUrl} alt={charDef.name} className="w-full h-full object-contain pixel-canvas" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveModal(activeModal === 'COMPANIONS' ? null : 'COMPANIONS')}
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#182430] hover:bg-[#223344] border border-[#324657] hover:border-[#e0a943] text-[10px] text-[#f5cc6b] cursor-pointer transition-colors"
+              title={activeCompanionDef ? `${activeCompanionDef.name} (${activeCompanionDef.perkSummary}) — Companions [K]` : 'Choose Companion [K]'}
+            >
+              {companionPortraitUrl && (
+                <img src={companionPortraitUrl} alt={activeCompanionDef?.name ?? 'Companion'} className="w-4 h-4 object-contain pixel-canvas" />
+              )}
+              <span className="truncate max-w-[44px] font-medium">{activeCompanionDef?.name ?? 'Pets'}</span>
+            </button>
+          </div>
 
           <div className="min-w-[175px] space-y-1">
             <div className="flex items-center justify-between text-xs">
@@ -177,40 +202,69 @@ export const GameHud: React.FC = () => {
           </button>
         </div>
 
-        {/* Top-Center: Compact Compass, Bearing Waypoint, Clock & Weather */}
-        <div className="hidden md:flex pointer-events-auto flex-col items-center gap-1 px-4 py-2 rounded-xl bg-[#111921]/90 border border-[#2c3b4a] shadow-lg">
-          <div className="flex items-center gap-3 text-xs font-mono-tabular text-[#dce4ea]">
-            <span className="text-[#94a3b0]">
-              Facing <strong className="text-[#f5cc6b]">{cardinalLabel(hud.facingAngle)}</strong>
-            </span>
-            <span className="text-[#3a4f63]">|</span>
-            {waypoint ? (
-              <div className="flex items-center gap-1.5">
-                <span
-                  style={{ transform: `rotate(${wpAngleDeg}deg)` }}
-                  className="inline-block text-[#6ae0d6] font-bold transition-transform duration-150"
-                >
-                  ▲
-                </span>
-                <span className="text-[#f3efe6] font-sans font-medium truncate max-w-[175px]">
-                  {waypoint.label}
-                </span>
-                <span className="text-[#87d4c8]">{wpDistMeters}m</span>
-              </div>
-            ) : (
-              <span className="text-[#8d9ca8] font-sans">Open Exploration</span>
-            )}
+        {/* Top-Center: Circular Brass Adventure Compass, Waypoint Bearing, Clock & Weather */}
+        <div className="hidden md:flex pointer-events-auto flex-col items-center gap-1">
+          <div className="relative w-[84px] h-[84px] flex items-center justify-center">
+            <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-[0_4px_12px_rgba(0,0,0,0.6)]">
+              <defs>
+                <radialGradient id="compassFace" cx="50%" cy="45%" r="55%">
+                  <stop offset="0%" stopColor="#1b2a38" />
+                  <stop offset="100%" stopColor="#0d151d" />
+                </radialGradient>
+                <linearGradient id="brassRim" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stopColor="#f5cc6b" />
+                  <stop offset="50%" stopColor="#c48a2d" />
+                  <stop offset="100%" stopColor="#855b1b" />
+                </linearGradient>
+              </defs>
+              {/* Outer brass ring & dark enamel dial */}
+              <circle cx="50" cy="50" r="46" fill="url(#compassFace)" stroke="url(#brassRim)" strokeWidth="4.5" />
+              <circle cx="50" cy="50" r="39" fill="none" stroke="#364b5e" strokeWidth="1" strokeDasharray="2 3" />
+
+              {/* Intercardinal diagonal ticks */}
+              <line x1="21" y1="21" x2="26" y2="26" stroke="#536b80" strokeWidth="1.5" />
+              <line x1="79" y1="21" x2="74" y2="26" stroke="#536b80" strokeWidth="1.5" />
+              <line x1="21" y1="79" x2="26" y2="74" stroke="#536b80" strokeWidth="1.5" />
+              <line x1="79" y1="79" x2="74" y2="74" stroke="#536b80" strokeWidth="1.5" />
+
+              {/* Cardinal Letters */}
+              <text x="50" y="16" textAnchor="middle" fill="#f5cc6b" fontSize="10" fontWeight="700" fontFamily="monospace">N</text>
+              <text x="86" y="53.5" textAnchor="middle" fill="#9fb1c2" fontSize="8.5" fontWeight="700" fontFamily="monospace">E</text>
+              <text x="50" y="90" textAnchor="middle" fill="#9fb1c2" fontSize="8.5" fontWeight="700" fontFamily="monospace">S</text>
+              <text x="14" y="53.5" textAnchor="middle" fill="#9fb1c2" fontSize="8.5" fontWeight="700" fontFamily="monospace">W</text>
+
+              {/* Player Facing Chevron */}
+              <g transform={`rotate(${((hud.facingAngle * 180) / Math.PI + 90).toFixed(1)} 50 50)`}>
+                <polygon points="50,24 55,34 50,31 45,34" fill="#6ae0d6" opacity="0.85" />
+              </g>
+
+              {/* Tracked Waypoint Needle */}
+              {waypoint && (
+                <g transform={`rotate(${wpAngleDeg.toFixed(1)} 50 50)`}>
+                  <polygon points="50,18 54.5,50 50,46 45.5,50" fill="#ffd466" />
+                  <polygon points="50,72 53,50 47,50" fill="#4f6478" />
+                </g>
+              )}
+
+              {/* Center Pivot Jewel */}
+              <circle cx="50" cy="50" r="4.5" fill="#e0a943" stroke="#111921" strokeWidth="1.5" />
+            </svg>
           </div>
-          <div className="flex items-center gap-2.5 text-[11px] font-mono-tabular text-[#a9b7c4]">
-            <span>{formatClock(hud.timeOfDay)} · <span className="capitalize">{hud.timePhase}</span></span>
-            <span>·</span>
-            <span className="capitalize text-[#87d4c8]">{hud.weather.replace('_', ' ')}</span>
-            {hud.activeBuff && (
-              <>
-                <span>·</span>
-                <span className="text-[#f5cc6b]">{hud.activeBuff}</span>
-              </>
-            )}
+          <div className="px-3 py-1 rounded-lg bg-[#111921]/88 border border-[#2c3b4a] text-center shadow-md">
+            <div className="text-[11px] font-medium text-[#f3efe6] flex items-center justify-center gap-1.5 font-mono-tabular">
+              {waypoint ? (
+                <>
+                  <span className="font-sans truncate max-w-[165px]">{waypoint.label}</span>
+                  <span className="text-[#87d4c8]">· {wpDistMeters}m</span>
+                </>
+              ) : (
+                <span className="text-[#9fb1c2] font-sans">Facing {cardinalLabel(hud.facingAngle)} · Free Roam</span>
+              )}
+            </div>
+            <div className="text-[10px] font-mono-tabular text-[#9fb1c2] capitalize">
+              {formatClock(hud.timeOfDay)} · {hud.weather.replace('_', ' ')}
+              {hud.activeBuff ? <span className="text-[#f5cc6b]"> · {hud.activeBuff}</span> : null}
+            </div>
           </div>
         </div>
 
@@ -219,7 +273,9 @@ export const GameHud: React.FC = () => {
           <div className="flex items-center gap-1 px-2.5 py-2 rounded-xl bg-[#111921]/92 border border-[#2c3b4a] shadow-lg">
             <div className="px-2 pr-3 border-r border-[#2c3b4a] text-right">
               <div className="text-xs font-semibold text-[#f3efe6] flex items-center justify-end gap-1.5">
-                {hud.isSailing ? (
+                {hud.isFlying ? (
+                  <Plane className="w-3.5 h-3.5 text-[#f5cc6b]" />
+                ) : hud.isSailing ? (
                   <Anchor className="w-3.5 h-3.5 text-[#6ae0d6]" />
                 ) : (
                   <Compass className="w-3.5 h-3.5 text-[#e0a943]" />
@@ -227,10 +283,51 @@ export const GameHud: React.FC = () => {
                 <span>{hud.interiorName ?? hud.regionName}</span>
               </div>
               <div className="text-[11px] text-[#98a6b3] font-mono-tabular">
-                {hud.isSailing ? `Sailing Boat Lv.${save.boatLevel}` : hud.isSwimming ? 'Swimming' : `Restored ${regionPct}%`}
+                {hud.isFlying
+                  ? `Flying Airship Lv.${save.airship.speedLevel} [V]`
+                  : hud.isSailing
+                    ? `Sailing Boat Lv.${save.boatLevel}`
+                    : hud.isSwimming
+                      ? 'Swimming'
+                      : hud.region === 'brightfall' && !hud.interiorId && hud.cityEvent !== 'none'
+                        ? `${hud.cityEvent.replace('_', ' ')} · ${regionPct}%`
+                        : `Restored ${regionPct}%`}
               </div>
             </div>
 
+            {save.airship.unlocked && !hud.interiorId && (
+              <button
+                type="button"
+                onClick={() => (hud.isFlying ? gameBridge.landAirship() : gameBridge.boardAirship())}
+                className={`p-2 rounded-lg cursor-pointer ${
+                  hud.isFlying
+                    ? 'text-[#f5cc6b] bg-[#e0a943]/20 hover:bg-[#e0a943]/30'
+                    : 'text-[#cfd8e0] hover:text-white hover:bg-white/10'
+                }`}
+                title={hud.isFlying ? 'Land Airship [V]' : 'Launch Airship [V]'}
+              >
+                <Plane className="w-4 h-4" />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                if (hud.interiorId) pushToast('Step outdoors to photograph wildlife and horizons!');
+                else gameBridge.takePhoto();
+              }}
+              className="p-2 rounded-lg text-[#cfd8e0] hover:text-white hover:bg-white/10 cursor-pointer"
+              title="Take Wildlife Photo [P]"
+            >
+              <Camera className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveModal(activeModal === 'PHOTOS' ? null : 'PHOTOS')}
+              className="p-2 rounded-lg text-[#cfd8e0] hover:text-white hover:bg-white/10 cursor-pointer"
+              title="Photo Album"
+            >
+              <ImageIcon className="w-4 h-4" />
+            </button>
             <button
               type="button"
               onClick={() => setActiveModal(activeModal === 'MAP' ? null : 'MAP')}

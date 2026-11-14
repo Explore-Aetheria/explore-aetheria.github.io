@@ -1,6 +1,7 @@
 export type MusicTrackId =
   | 'title'
   | 'brightfall'
+  | 'christmas'
   | 'whispering_woods'
   | 'sunset_coast'
   | 'frostpeak'
@@ -12,6 +13,13 @@ export type MusicTrackId =
   | 'sky_island'
   | 'haunted_island'
   | 'lost_kingdom'
+  | 'newbrook'
+  | 'amusement_park'
+  | 'moving_island'
+  | 'underground'
+  | 'dim_mirror'
+  | 'dim_verdant'
+  | 'dim_void'
   | 'guardian'
   | 'minigame'
   | 'ending';
@@ -49,6 +57,19 @@ const TRACKS: Record<MusicTrackId, { tempoMs: number; steps: NoteStep[] }> = {
       { freq: 392.0, dur: 0.25, type: 'triangle', vol: 0.11 },
       { freq: 329.63, dur: 0.28, type: 'sine', vol: 0.12, harmony: 164.81 },
       { freq: 293.66, dur: 0.35, type: 'sine', vol: 0.1 },
+    ],
+  },
+  christmas: {
+    tempoMs: 320,
+    steps: [
+      { freq: 659.25, dur: 0.2, type: 'sine', vol: 0.12, harmony: 261.63 },
+      { freq: 659.25, dur: 0.2, type: 'sine', vol: 0.12 },
+      { freq: 659.25, dur: 0.35, type: 'triangle', vol: 0.13, harmony: 329.63 },
+      { freq: 659.25, dur: 0.2, type: 'sine', vol: 0.12 },
+      { freq: 783.99, dur: 0.2, type: 'sine', vol: 0.13 },
+      { freq: 523.25, dur: 0.24, type: 'triangle', vol: 0.12, harmony: 261.63 },
+      { freq: 587.33, dur: 0.24, type: 'sine', vol: 0.12 },
+      { freq: 659.25, dur: 0.4, type: 'triangle', vol: 0.13, harmony: 196.0 },
     ],
   },
   whispering_woods: {
@@ -177,6 +198,70 @@ const TRACKS: Record<MusicTrackId, { tempoMs: number; steps: NoteStep[] }> = {
       { freq: 493.88, dur: 0.42, type: 'sine', vol: 0.11, harmony: 246.94 },
       { freq: 440.0, dur: 0.42, type: 'triangle', vol: 0.11 },
       { freq: 392.0, dur: 0.45, type: 'sine', vol: 0.11 },
+    ],
+  },
+  newbrook: {
+    tempoMs: 380,
+    steps: [
+      { freq: 293.66, dur: 0.3, type: 'triangle', vol: 0.12, harmony: 146.83 },
+      { freq: 369.99, dur: 0.28, type: 'sine', vol: 0.11 },
+      { freq: 440.0, dur: 0.3, type: 'triangle', vol: 0.12, harmony: 220.0 },
+      { freq: 587.33, dur: 0.34, type: 'sine', vol: 0.11 },
+    ],
+  },
+  amusement_park: {
+    tempoMs: 260,
+    steps: [
+      { freq: 523.25, dur: 0.2, type: 'triangle', vol: 0.11, harmony: 261.63 },
+      { freq: 659.25, dur: 0.2, type: 'sine', vol: 0.11 },
+      { freq: 783.99, dur: 0.22, type: 'triangle', vol: 0.12, harmony: 392.0 },
+      { freq: 659.25, dur: 0.2, type: 'sine', vol: 0.1 },
+      { freq: 587.33, dur: 0.22, type: 'triangle', vol: 0.11 },
+    ],
+  },
+  moving_island: {
+    tempoMs: 490,
+    steps: [
+      { freq: 329.63, dur: 0.4, type: 'sine', vol: 0.11, harmony: 164.81 },
+      { freq: 493.88, dur: 0.38, type: 'sine', vol: 0.1 },
+      { freq: 622.25, dur: 0.42, type: 'triangle', vol: 0.11 },
+      { freq: 587.33, dur: 0.42, type: 'sine', vol: 0.1 },
+    ],
+  },
+  underground: {
+    tempoMs: 500,
+    steps: [
+      { freq: 196.0, dur: 0.42, type: 'triangle', vol: 0.11, harmony: 98.0 },
+      { freq: 293.66, dur: 0.38, type: 'sine', vol: 0.1 },
+      { freq: 349.23, dur: 0.4, type: 'sine', vol: 0.1, harmony: 174.61 },
+      { freq: 261.63, dur: 0.44, type: 'triangle', vol: 0.1 },
+    ],
+  },
+  dim_mirror: {
+    tempoMs: 410,
+    steps: [
+      { freq: 440.0, dur: 0.35, type: 'sine', vol: 0.11, harmony: 220.0 },
+      { freq: 554.37, dur: 0.35, type: 'sine', vol: 0.1 },
+      { freq: 659.25, dur: 0.38, type: 'triangle', vol: 0.11 },
+      { freq: 830.61, dur: 0.38, type: 'sine', vol: 0.09 },
+    ],
+  },
+  dim_verdant: {
+    tempoMs: 370,
+    steps: [
+      { freq: 392.0, dur: 0.32, type: 'triangle', vol: 0.11, harmony: 196.0 },
+      { freq: 493.88, dur: 0.3, type: 'sine', vol: 0.11 },
+      { freq: 587.33, dur: 0.32, type: 'sine', vol: 0.11 },
+      { freq: 739.99, dur: 0.34, type: 'triangle', vol: 0.1 },
+    ],
+  },
+  dim_void: {
+    tempoMs: 480,
+    steps: [
+      { freq: 220.0, dur: 0.42, type: 'sawtooth', vol: 0.06, harmony: 110.0 },
+      { freq: 261.63, dur: 0.4, type: 'sine', vol: 0.1 },
+      { freq: 311.13, dur: 0.42, type: 'triangle', vol: 0.09 },
+      { freq: 246.94, dur: 0.45, type: 'sine', vol: 0.09 },
     ],
   },
   guardian: {
@@ -400,6 +485,50 @@ class SoundEngine {
 
   public playThunder() {
     this.playTone(95, 42, 0.55, 'sawtooth', 0.12);
+  }
+
+  public playSplash() {
+    this.playTone(420, 160, 0.18, 'sine', 0.14);
+    window.setTimeout(() => this.playTone(260, 520, 0.14, 'triangle', 0.11), 65);
+  }
+
+  public playShutter() {
+    this.playTone(980, 320, 0.06, 'square', 0.1);
+    window.setTimeout(() => this.playTone(620, 1180, 0.08, 'sine', 0.1), 55);
+  }
+
+  public playMonsterAttack(element: 'nature' | 'water' | 'fire' | 'ice' | 'shadow' | 'earth' | 'storm' | 'void' | 'light') {
+    if (element === 'fire') {
+      this.playTone(340, 110, 0.18, 'sawtooth', 0.13);
+    } else if (element === 'ice') {
+      this.playTone(920, 540, 0.13, 'triangle', 0.12);
+    } else if (element === 'shadow' || element === 'void') {
+      this.playTone(220, 480, 0.16, 'sine', 0.14);
+    } else if (element === 'earth') {
+      this.playTone(125, 48, 0.22, 'sawtooth', 0.16);
+    } else if (element === 'storm') {
+      this.playTone(680, 290, 0.12, 'square', 0.11);
+    } else if (element === 'water') {
+      this.playTone(360, 210, 0.15, 'sine', 0.13);
+    } else {
+      this.playTone(310, 175, 0.14, 'triangle', 0.12);
+    }
+  }
+
+  public playShieldBlock() {
+    this.playTone(460, 220, 0.09, 'square', 0.11);
+  }
+
+  public playBossIntro() {
+    const notes = [220, 261.63, 329.63, 440];
+    notes.forEach((n, idx) => {
+      window.setTimeout(() => this.playTone(n, n * 0.98, 0.3, 'sawtooth', 0.14), idx * 90);
+    });
+  }
+
+  public playTutorialStep() {
+    this.playTone(523.25, 659.25, 0.11, 'sine', 0.12);
+    window.setTimeout(() => this.playTone(659.25, 783.99, 0.15, 'triangle', 0.12), 60);
   }
 }
 

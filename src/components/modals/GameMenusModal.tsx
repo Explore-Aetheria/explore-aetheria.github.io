@@ -3,6 +3,7 @@ import {
   Anchor,
   Archive,
   BedDouble,
+  Camera,
   Check,
   Compass,
   Fish,
@@ -11,13 +12,17 @@ import {
   Home,
   Lock,
   Paintbrush,
+  Plane,
+  Shield,
   ShoppingBag,
   Sparkles,
   Trophy,
+  Users,
   Utensils,
   X,
 } from 'lucide-react';
 import { CHARACTERS, CHARACTER_ORDER, OUTFIT_MODIFIERS } from '../../data/characters';
+import { COMPANIONS, COMPANION_ORDER } from '../../data/companions';
 import { COOKING_RECIPES, EQUIPMENT_CATALOG, FISH_SPECIES, SHOPS } from '../../data/equipmentAndFood';
 import { NPCS } from '../../data/npcs';
 import {
@@ -29,9 +34,19 @@ import {
   UPGRADE_NODES,
 } from '../../data/progression';
 import { QUESTS, QUEST_ORDER, RESTORATION_PROJECTS } from '../../data/quests';
-import { getCharacterPortraitDataUrl } from '../../game/PixelArtGenerator';
-import { useGame } from '../../state/GameStore';
-import { CharacterId, HouseState, KeyBindings, MiniGameId, OutfitId } from '../../types/game';
+import { gameBridge } from '../../game/GameBridge';
+import { getCharacterPortraitDataUrl, getCompanionPortraitDataUrl } from '../../game/PixelArtGenerator';
+import { useGame, VILLAGE_BUILDINGS_CATALOG } from '../../state/GameStore';
+import {
+  CharacterId,
+  CityEventType,
+  CompanionId,
+  DifficultyMode,
+  HouseState,
+  KeyBindings,
+  MiniGameId,
+  OutfitId,
+} from '../../types/game';
 
 const ALL_MINIGAMES: MiniGameId[] = [
   'archery',
@@ -44,6 +59,9 @@ const ALL_MINIGAMES: MiniGameId[] = [
   'bicyclerace',
   'boatrace',
   'cooking',
+  'tennis',
+  'swimming',
+  'carnival',
 ];
 
 const HOUSE_WALL_COLORS = [
@@ -54,14 +72,57 @@ const HOUSE_WALL_COLORS = [
   { name: 'Rosewood', hex: '#6e475b' },
 ];
 
+const CITY_EVENTS_LIST: { id: CityEventType; name: string; desc: string }[] = [
+  {
+    id: 'christmas',
+    name: 'Christmas in Brightfall',
+    desc: 'Snowfall settles softly over Brightfall’s avenues, evergreen trees glow gold, and festive ribbons frame the plaza.',
+  },
+  {
+    id: 'music_festival',
+    name: 'Harmony Music Festival',
+    desc: 'Lantern spotlights illuminate the amphitheater while brass ensembles & street musicians perform.',
+  },
+  {
+    id: 'food_festival',
+    name: 'Golden Skillet Food Fair',
+    desc: 'Chef Clara & Brightfall’s bistros set out tasting stalls and aromatic autumn-spice garlands.',
+  },
+  {
+    id: 'sports_championship',
+    name: 'Aetheria Olympic Games',
+    desc: 'Championship banners drape Brightfall Stadium, Football, Basketball, Tennis, and Swimming arenas.',
+  },
+  {
+    id: 'fireworks',
+    name: 'Starlight Fireworks Gala',
+    desc: 'Sky-lantern bursts and celebratory fireworks shimmer above Brightfall Square every evening.',
+  },
+  {
+    id: 'none',
+    name: 'Peaceful Everyday Season',
+    desc: 'Clear everyday Brightfall atmosphere with normal seasonal weather.',
+  },
+];
+
+const GIANT_WILDLIFE_CHECKLIST = [
+  { id: 'giant_mammoth', name: 'Glacier Mammoth', region: 'The Frozen Kingdom', hint: 'Roams the snowy fjords of Frozen Kingdom.' },
+  { id: 'giant_stag', name: 'Elder Forest Stag', region: 'Whispering Woods', hint: 'Strides calmly through ancient green trails.' },
+  { id: 'giant_whale', name: 'Leviathan Whale', region: 'Aetheria Sea', hint: 'Surfaces across deep open waters between islands.' },
+  { id: 'giant_manta', name: 'Sky Manta', region: 'Sky Island / Airspace', hint: 'Glides majestically over Cloudspire cliffs and clouds.' },
+];
+
 export const GameMenusModal: React.FC = () => {
   const {
     activeModal,
     setActiveModal,
     openMiniGame,
     save,
+    hud,
     selectCharacter,
     setCharacterOutfit,
+    selectCompanion,
+    adoptCompanion,
     completeRestoration,
     buyUpgrade,
     buyShopItem,
@@ -72,6 +133,12 @@ export const GameMenusModal: React.FC = () => {
     upgradeEquipment,
     equipItem,
     upgradeBoat,
+    upgradeBoatPart,
+    upgradeAirship,
+    buildVillageStructure,
+    setCityEvent,
+    inviteNpcToHouse,
+    setDifficulty,
     sleepUntil,
     upgradeHouse,
     toggleHouseDecor,
@@ -86,9 +153,10 @@ export const GameMenusModal: React.FC = () => {
 
   const [rebindingKey, setRebindingKey] = useState<keyof KeyBindings | null>(null);
   const [questTab, setQuestTab] = useState<'quests' | 'restoration'>('quests');
+  const [questFilter, setQuestFilter] = useState<'active' | 'main' | 'campaign' | 'side' | 'completed'>('active');
   const [shopTab, setShopTab] = useState<string>(save.activeShopId || 'market');
   const [houseTab, setHouseTab] = useState<'bedroom' | 'kitchen' | 'decor' | 'storage' | 'trophies'>('bedroom');
-  const [equipFilter, setEquipFilter] = useState<'all' | 'weapon' | 'accessory' | 'rod'>('all');
+  const [equipFilter, setEquipFilter] = useState<'all' | 'weapon' | 'tool' | 'armor' | 'accessory' | 'tackle'>('all');
 
   useEffect(() => {
     if (activeModal === 'SHOP') {
@@ -107,10 +175,15 @@ export const GameMenusModal: React.FC = () => {
 
   const titleMap: Record<string, string> = {
     CHARACTERS: 'Party & Wardrobe Atelier',
+    COMPANIONS: 'Collectible Companions',
     INVENTORY: 'Explorer Satchel',
     SHOP: SHOPS[shopTab]?.name ?? 'Aetheria Shops',
-    EQUIPMENT: 'Anvil & Spark Armory',
-    HOUSE: `Brightfall Homestead (Tier ${save.house.tier})`,
+    EQUIPMENT: 'Anvil, Tools, Armor & Tackle Armory',
+    HOUSE: `Brightfall Homestead (Tier ${save.house.tier}/4)`,
+    VILLAGE: `Newbrook Village Charter (${save.village.buildings.length}/8 Built)`,
+    AIRSHIP: 'Grand Skyport & Marina Hangar',
+    EVENTS: 'Brightfall City Events Board',
+    PHOTOS: `Wildlife & Horizon Album (${save.photos.length})`,
     QUESTS: 'Quest & Restoration Noticeboard',
     JOURNAL: 'Aetheria Collection Journal',
     UPGRADES: 'Progression & Resonance Tree',
@@ -131,9 +204,20 @@ export const GameMenusModal: React.FC = () => {
       (save.inventory.some((i) => i.id === item.id) || save.house.storage.some((i) => i.id === item.id))
   );
 
-  const equipmentList = Object.values(EQUIPMENT_CATALOG).filter(
-    (eq) => equipFilter === 'all' || eq.slot === equipFilter
-  );
+  const equipmentList = Object.values(EQUIPMENT_CATALOG).filter((eq) => {
+    if (equipFilter === 'all') return true;
+    if (equipFilter === 'tool') return eq.slot === 'weapon' && eq.weaponType === 'tool';
+    if (equipFilter === 'weapon') return eq.slot === 'weapon' && eq.weaponType !== 'tool';
+    if (equipFilter === 'tackle') {
+      return eq.slot === 'rod' || eq.slot === 'line' || eq.slot === 'bait' || eq.slot === 'hook';
+    }
+    return eq.slot === equipFilter;
+  });
+
+  const houseUpgradeCost = save.house.tier === 1 ? 90 : save.house.tier === 2 ? 180 : 280;
+  const guestCandidateNpcs = NPCS.filter(
+    (n) => save.metNpcs.includes(n.id) && n.region === 'brightfall'
+  ).slice(0, 10);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a1016]/85 p-4">
@@ -157,6 +241,121 @@ export const GameMenusModal: React.FC = () => {
 
         {/* Body */}
         <div className="p-5 overflow-y-auto game-scroll space-y-5">
+          {/* Quick Switch between Characters & Companions */}
+          {(activeModal === 'CHARACTERS' || activeModal === 'COMPANIONS') && (
+            <div className="flex items-center gap-2 p-1 rounded-lg bg-[#0f161d] w-fit border border-[#263442]">
+              <button
+                type="button"
+                onClick={() => setActiveModal('CHARACTERS')}
+                className={`px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap cursor-pointer ${
+                  activeModal === 'CHARACTERS' ? 'bg-[#e0a943] text-[#111921]' : 'text-[#b8c4ce] hover:text-white'
+                }`}
+              >
+                Playable Heroes ({save.unlockedCharacters.length}/{CHARACTER_ORDER.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveModal('COMPANIONS')}
+                className={`px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap cursor-pointer ${
+                  activeModal === 'COMPANIONS' ? 'bg-[#e0a943] text-[#111921]' : 'text-[#b8c4ce] hover:text-white'
+                }`}
+              >
+                Creature Companions ({save.unlockedCompanions.length}/{COMPANION_ORDER.length})
+              </button>
+            </div>
+          )}
+
+          {/* COLLECTIBLE CREATURE COMPANIONS */}
+          {activeModal === 'COMPANIONS' && (
+            <div className="space-y-4">
+              <div className="p-3.5 rounded-lg bg-[#19232d] border border-[#2d3e4f] flex flex-wrap items-center justify-between gap-2 text-xs text-[#b8c4ce]">
+                <span>
+                  Companions physically follow you across land, boat, and skyship, granting combat assist, treasure radar, regen, and movement perks.
+                </span>
+                {save.activeCompanion && (
+                  <button
+                    type="button"
+                    onClick={() => selectCompanion(null)}
+                    className="px-2.5 py-1 rounded bg-[#233240] hover:bg-[#314559] text-[#dce4ea] text-[11px] font-semibold whitespace-nowrap cursor-pointer"
+                  >
+                    Rest Companion
+                  </button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                {COMPANION_ORDER.map((compId: CompanionId) => {
+                  const def = COMPANIONS[compId];
+                  const unlocked = save.unlockedCompanions.includes(compId);
+                  const active = save.activeCompanion === compId;
+                  const portrait = getCompanionPortraitDataUrl(compId);
+
+                  return (
+                    <div
+                      key={compId}
+                      className={`p-4 rounded-lg border transition-colors ${
+                        active
+                          ? 'bg-[#1c2a36] border-[#e0a943]'
+                          : unlocked
+                            ? 'bg-[#18222c] border-[#2d3e4f]'
+                            : 'bg-[#11181f] border-[#222d38]'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="w-14 h-14 rounded-lg bg-[#0f161d] border border-[#324557] overflow-hidden shrink-0 flex items-center justify-center">
+                          <img
+                            src={portrait}
+                            alt={def.name}
+                            className={`w-12 h-12 object-contain pixel-canvas ${unlocked ? '' : 'opacity-45 grayscale'}`}
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <h3 className="font-semibold text-sm text-[#f3efe6]">
+                              {def.name} · <span className="text-[#9fb0bf] font-normal">{def.species}</span>
+                            </h3>
+                            <span className="text-[11px] text-[#87d4c8] shrink-0">{def.title}</span>
+                          </div>
+                          <p className="text-xs text-[#b8c4ce] mt-1">{def.description}</p>
+                          <p className="text-[11px] text-[#f5cc6b] mt-1.5 font-medium">{def.perkSummary}</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-2">
+                        <span className="text-[11px] text-[#9aa6b2] flex-1 min-w-[140px]">
+                          {unlocked ? 'Ready to travel with you' : def.unlockHint}
+                        </span>
+                        {unlocked ? (
+                          <button
+                            type="button"
+                            onClick={() => selectCompanion(active ? null : compId)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap cursor-pointer ${
+                              active
+                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40'
+                                : 'bg-[#e0a943] hover:bg-[#ebb754] text-[#111921]'
+                            }`}
+                          >
+                            {active ? 'Following' : 'Summon'}
+                          </button>
+                        ) : def.price ? (
+                          <button
+                            type="button"
+                            onClick={() => adoptCompanion(compId)}
+                            className="px-3 py-1.5 rounded-lg bg-[#e0a943] hover:bg-[#ebb754] text-[#111921] text-xs font-semibold font-mono-tabular whitespace-nowrap cursor-pointer"
+                          >
+                            Adopt ({def.price} Sparks)
+                          </button>
+                        ) : (
+                          <span className="text-[11px] text-[#6d7b88] font-medium">Milestone Unlock</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* CHARACTERS & 5 OUTFITS */}
           {activeModal === 'CHARACTERS' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
@@ -375,14 +574,14 @@ export const GameMenusModal: React.FC = () => {
             </div>
           )}
 
-          {/* EQUIPMENT & BOAT ARMORY */}
+          {/* EQUIPMENT, ARMOR & TACKLE ARMORY */}
           {activeModal === 'EQUIPMENT' && (
             <div className="space-y-4">
-              {/* Active Loadout & Boat Tier Summary */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {/* Active Loadout & Tackle Summary */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                 <div className="p-3 rounded-lg bg-[#19232d] border border-[#2d3e4f]">
-                  <div className="text-[11px] text-[#9aa6b2]">Equipped Weapon</div>
-                  <div className="text-xs font-semibold text-[#f5cc6b] mt-0.5">
+                  <div className="text-[11px] text-[#9aa6b2]">Weapon</div>
+                  <div className="text-xs font-semibold text-[#f5cc6b] mt-0.5 truncate">
                     {EQUIPMENT_CATALOG[save.equippedWeapon]?.name ?? 'Traveler’s Prism'}
                   </div>
                   <div className="text-[11px] font-mono-tabular text-[#87d4c8]">
@@ -390,15 +589,33 @@ export const GameMenusModal: React.FC = () => {
                   </div>
                 </div>
                 <div className="p-3 rounded-lg bg-[#19232d] border border-[#2d3e4f]">
-                  <div className="text-[11px] text-[#9aa6b2]">Equipped Accessory</div>
-                  <div className="text-xs font-semibold text-[#f5cc6b] mt-0.5">
+                  <div className="text-[11px] text-[#9aa6b2] flex items-center gap-1">
+                    <Shield className="w-3 h-3 text-[#98d6ff]" /> Armor
+                  </div>
+                  <div className="text-xs font-semibold text-[#f5cc6b] mt-0.5 truncate">
+                    {save.equippedArmor ? EQUIPMENT_CATALOG[save.equippedArmor]?.name : 'None Equipped'}
+                  </div>
+                  {save.equippedArmor && (
+                    <div className="text-[11px] font-mono-tabular text-[#87d4c8]">
+                      -{EQUIPMENT_CATALOG[save.equippedArmor]?.defenseBonus ?? 0}% Dmg
+                    </div>
+                  )}
+                </div>
+                <div className="p-3 rounded-lg bg-[#19232d] border border-[#2d3e4f]">
+                  <div className="text-[11px] text-[#9aa6b2]">Accessory</div>
+                  <div className="text-xs font-semibold text-[#f5cc6b] mt-0.5 truncate">
                     {save.equippedAccessory ? EQUIPMENT_CATALOG[save.equippedAccessory]?.name : 'None Equipped'}
                   </div>
                 </div>
                 <div className="p-3 rounded-lg bg-[#19232d] border border-[#2d3e4f]">
-                  <div className="text-[11px] text-[#9aa6b2]">Fishing Rod</div>
-                  <div className="text-xs font-semibold text-[#f5cc6b] mt-0.5">
+                  <div className="text-[11px] text-[#9aa6b2]">Fishing Tackle</div>
+                  <div className="text-[11px] font-semibold text-[#7be3f5] mt-0.5 truncate">
                     {EQUIPMENT_CATALOG[save.equippedRod]?.name ?? 'Bamboo Pier Rod'}
+                  </div>
+                  <div className="text-[10px] text-[#aeb9c4] truncate">
+                    {EQUIPMENT_CATALOG[save.equippedLine]?.name.split(' ')[0]} ·{' '}
+                    {EQUIPMENT_CATALOG[save.equippedBait]?.name.split(' ')[0]} ·{' '}
+                    {EQUIPMENT_CATALOG[save.equippedHook]?.name.split(' ')[0]}
                   </div>
                 </div>
                 <div className="p-3 rounded-lg bg-[#162733] border border-[#34546b] flex items-center justify-between gap-2">
@@ -430,8 +647,10 @@ export const GameMenusModal: React.FC = () => {
                   [
                     { id: 'all', label: 'All Gear' },
                     { id: 'weapon', label: 'Weapons' },
+                    { id: 'tool', label: 'Tools' },
+                    { id: 'armor', label: 'Armor' },
                     { id: 'accessory', label: 'Accessories' },
-                    { id: 'rod', label: 'Fishing Rods' },
+                    { id: 'tackle', label: 'Fishing Tackle' },
                   ] as const
                 ).map((tab) => (
                   <button
@@ -454,8 +673,12 @@ export const GameMenusModal: React.FC = () => {
                   const lvl = save.equipmentLevels[eq.id] ?? 1;
                   const equipped =
                     save.equippedWeapon === eq.id ||
+                    save.equippedArmor === eq.id ||
                     save.equippedAccessory === eq.id ||
-                    save.equippedRod === eq.id;
+                    save.equippedRod === eq.id ||
+                    save.equippedLine === eq.id ||
+                    save.equippedBait === eq.id ||
+                    save.equippedHook === eq.id;
                   const upgradeCost = 45 * lvl;
 
                   return (
@@ -475,14 +698,14 @@ export const GameMenusModal: React.FC = () => {
                               className="w-3 h-3 rounded-full inline-block shrink-0"
                             />
                             <h3 className="text-sm font-semibold text-[#f3efe6]">{eq.name}</h3>
-                            {owned && (
+                            {owned && eq.slot === 'weapon' && (
                               <span className="text-[11px] font-mono-tabular text-[#87d4c8]">Lv.{lvl}/3</span>
                             )}
                           </div>
                           <p className="text-xs text-[#aeb9c4] mt-1">{eq.description}</p>
                         </div>
                         <span className="text-[11px] uppercase tracking-wider text-[#8d9ca8] shrink-0">
-                          {eq.slot}
+                          {eq.weaponType ? `${eq.weaponType}` : eq.slot}
                         </span>
                       </div>
 
@@ -490,7 +713,9 @@ export const GameMenusModal: React.FC = () => {
                         {eq.powerBonus > 0 && <span>+{eq.powerBonus} Power</span>}
                         {eq.speedBonus > 0 && <span>+{eq.speedBonus} Speed</span>}
                         {eq.energyBonus > 0 && <span>+{eq.energyBonus} Energy</span>}
-                        {eq.fishingBonus && eq.fishingBonus > 0 ? <span>+{eq.fishingBonus}% Catch Zone</span> : null}
+                        {eq.defenseBonus && eq.defenseBonus > 0 ? <span>+{eq.defenseBonus}% Defense</span> : null}
+                        {eq.fishingBonus && eq.fishingBonus > 0 ? <span>+{eq.fishingBonus}% Catch Bonus</span> : null}
+                        {eq.rarityBonus && eq.rarityBonus > 0 ? <span>+{eq.rarityBonus}% Rare Fish</span> : null}
                       </div>
 
                       {!owned && eq.craftRecipe && (
@@ -628,19 +853,19 @@ export const GameMenusModal: React.FC = () => {
                     <div>
                       <h3 className="text-sm font-semibold text-[#f3efe6] flex items-center gap-2">
                         <Home className="w-4 h-4 text-[#e0a943]" />
-                        Homestead Expansion (Tier {save.house.tier}/3)
+                        Homestead Expansion (Tier {save.house.tier}/4)
                       </h3>
                       <p className="text-xs text-[#aeb9c4] mt-1">
-                        Expand your cottage with polished furnishings, brighter hearth lighting, and homeowner recognition.
+                        Expand your residence up to a 4-tier estate with kitchen, bedroom, loft lounge, glowing hearths, and guest quarters.
                       </p>
                     </div>
-                    {save.house.tier < 3 ? (
+                    {save.house.tier < 4 ? (
                       <button
                         type="button"
                         onClick={upgradeHouse}
                         className="px-4 py-2 rounded-lg bg-[#e0a943] hover:bg-[#ebb754] text-[#111921] text-xs font-semibold font-mono-tabular whitespace-nowrap cursor-pointer"
                       >
-                        Upgrade ({save.house.tier === 1 ? 90 : 180} Sparks)
+                        Upgrade ({houseUpgradeCost} Sparks)
                       </button>
                     ) : (
                       <span className="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 text-xs font-semibold border border-emerald-400/30">
@@ -790,6 +1015,41 @@ export const GameMenusModal: React.FC = () => {
                       </div>
                     )}
                   </div>
+
+                  <div className="p-4 rounded-lg bg-[#19232d] border border-[#2d3e4f] space-y-2.5">
+                    <h3 className="text-sm font-semibold text-[#f3efe6] flex items-center gap-2">
+                      <Users className="w-4 h-4 text-[#87d4c8]" /> Invite Brightfall Friends Over
+                    </h3>
+                    <p className="text-xs text-[#9aa6b2]">
+                      Invite residents you’ve met to relax and visit inside your Brightfall residence.
+                    </p>
+                    {guestCandidateNpcs.length === 0 ? (
+                      <p className="text-xs text-[#9aa6b2]">Meet residents across Brightfall first!</p>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {guestCandidateNpcs.map((npc) => {
+                          const invited = save.house.invitedNpcs.includes(npc.id);
+                          return (
+                            <div key={npc.id} className="p-2.5 rounded-lg bg-[#141c24] border border-[#293847] flex items-center justify-between gap-2">
+                              <div>
+                                <div className="text-xs font-semibold text-[#f3efe6]">{npc.name}</div>
+                                <div className="text-[11px] text-[#8d9ca8]">{npc.role}</div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => inviteNpcToHouse(npc.id)}
+                                className={`px-2.5 py-1 rounded text-[11px] font-semibold whitespace-nowrap cursor-pointer ${
+                                  invited ? 'bg-emerald-600 text-white' : 'bg-[#233240] hover:bg-[#314559] text-[#dce4ea]'
+                                }`}
+                              >
+                                {invited ? 'Visiting' : 'Invite'}
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -872,33 +1132,376 @@ export const GameMenusModal: React.FC = () => {
             </div>
           )}
 
+          {/* NEWBROOK VILLAGE BUILDER */}
+          {activeModal === 'VILLAGE' && (
+            <div className="space-y-4">
+              <div className="p-4 rounded-lg bg-[#172420] border border-[#2e4d3e] flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-[#9ee88a]">Newbrook Settlement Charter</h3>
+                  <p className="text-xs text-[#b8c4ce] mt-0.5">
+                    Construct homes, bakeries, bridges, and landmarks to bring Newbrook Valley back to life.
+                  </p>
+                </div>
+                <div className="text-right font-mono-tabular">
+                  <div className="text-sm font-bold text-[#f3efe6]">{save.village.buildings.length}/8 Structures</div>
+                  <div className="text-[11px] text-[#87d4c8]">{save.village.residents.length} Residents Moved In</div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {VILLAGE_BUILDINGS_CATALOG.map((bld) => {
+                  const built = save.village.buildings.includes(bld.id);
+                  return (
+                    <div
+                      key={bld.id}
+                      className={`p-4 rounded-lg border flex flex-col justify-between gap-3 ${
+                        built ? 'bg-[#1a2b26] border-emerald-500/45' : 'bg-[#19232d] border-[#2d3e4f]'
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between gap-2">
+                          <h4 className="text-sm font-semibold text-[#f3efe6]">{bld.name}</h4>
+                          {built && <Check className="w-4 h-4 text-emerald-400 shrink-0" />}
+                        </div>
+                        <p className="text-xs text-[#aeb9c4] mt-1">{bld.description}</p>
+                        <p className="text-[11px] text-[#87d4c8] mt-1.5">Welcomes: {bld.residentName}</p>
+                      </div>
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          disabled={built}
+                          onClick={() => buildVillageStructure(bld.id)}
+                          className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold font-mono-tabular whitespace-nowrap ${
+                            built
+                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30'
+                              : 'bg-[#e0a943] hover:bg-[#ebb754] text-[#111921] cursor-pointer'
+                          }`}
+                        >
+                          {built ? 'Constructed' : `Build (${bld.cost} Sparks)`}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* AIRSHIP & BOAT HANGAR */}
+          {activeModal === 'AIRSHIP' && (
+            <div className="space-y-5">
+              {/* Skywing Airship */}
+              <div className="p-4 rounded-lg bg-[#19232d] border border-[#324a5e] space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-[#f5cc6b] flex items-center gap-2">
+                      <Plane className="w-4 h-4" /> Skywing Airship
+                    </h3>
+                    <p className="text-xs text-[#aeb9c4] mt-0.5">
+                      {save.airship.unlocked
+                        ? 'Soar over oceans, islands, and cliffs with [V] and land anywhere safe.'
+                        : 'Restore Brightfall Central Railway & Skyport in Quests -> Restoration to unlock flight.'}
+                    </p>
+                  </div>
+                  {save.airship.unlocked && !hud.interiorId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveModal(null);
+                        if (hud.isFlying) gameBridge.landAirship();
+                        else gameBridge.boardAirship();
+                      }}
+                      className="px-4 py-2 rounded-lg bg-[#e0a943] hover:bg-[#ebb754] text-[#111921] text-xs font-semibold whitespace-nowrap cursor-pointer"
+                    >
+                      {hud.isFlying ? 'Land Airship [V]' : 'Launch Airship [V]'}
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="p-3 rounded-lg bg-[#131b23] border border-[#293947] flex items-center justify-between gap-2">
+                    <div>
+                      <div className="text-xs font-semibold text-[#f3efe6]">Aether Turbines</div>
+                      <div className="text-[11px] font-mono-tabular text-[#87d4c8]">
+                        Speed Lv.{save.airship.speedLevel}/3
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={save.airship.speedLevel >= 3}
+                      onClick={() => upgradeAirship('speedLevel', save.airship.speedLevel === 1 ? 100 : 180)}
+                      className="px-3 py-1.5 rounded-lg bg-[#233342] hover:bg-[#31475b] disabled:opacity-50 text-xs font-semibold text-[#f5cc6b] font-mono-tabular cursor-pointer whitespace-nowrap"
+                    >
+                      {save.airship.speedLevel >= 3
+                        ? 'Maxed'
+                        : `Upgrade (${save.airship.speedLevel === 1 ? 100 : 180})`}
+                    </button>
+                  </div>
+                  <div className="p-3 rounded-lg bg-[#131b23] border border-[#293947] flex items-center justify-between gap-2">
+                    <div>
+                      <div className="text-xs font-semibold text-[#f3efe6]">Cloud Altitude Stabilizer</div>
+                      <div className="text-[11px] font-mono-tabular text-[#87d4c8]">
+                        Altitude Lv.{save.airship.altitudeLevel}/3
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={save.airship.altitudeLevel >= 3}
+                      onClick={() => upgradeAirship('altitudeLevel', save.airship.altitudeLevel === 1 ? 90 : 160)}
+                      className="px-3 py-1.5 rounded-lg bg-[#233342] hover:bg-[#31475b] disabled:opacity-50 text-xs font-semibold text-[#f5cc6b] font-mono-tabular cursor-pointer whitespace-nowrap"
+                    >
+                      {save.airship.altitudeLevel >= 3
+                        ? 'Maxed'
+                        : `Upgrade (${save.airship.altitudeLevel === 1 ? 90 : 160})`}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <span className="text-xs text-[#9aa6b2] mr-1">Hull Paint:</span>
+                  {(['gold', 'azure', 'crimson'] as const).map((col) => (
+                    <button
+                      key={col}
+                      type="button"
+                      onClick={() => upgradeAirship('hullColor', 0, col)}
+                      className={`px-3 py-1 rounded text-xs capitalize cursor-pointer ${
+                        save.airship.hullColor === col
+                          ? 'bg-[#e0a943] text-[#111921] font-semibold'
+                          : 'bg-[#131b23] border border-[#2d3e4f] text-[#dce4ea]'
+                      }`}
+                    >
+                      {col}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Boat Refit Dock */}
+              <div className="p-4 rounded-lg bg-[#16232e] border border-[#2d485c] space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-[#7be3f5] flex items-center gap-2">
+                    <Anchor className="w-4 h-4" /> Driftwood Harbour Boat Refit Dock
+                  </h3>
+                  <span className="text-xs font-mono-tabular text-[#87d4c8]">
+                    Class: {save.boatUpgrades.skin.toUpperCase()}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {(
+                    [
+                      { key: 'speedLevel', label: 'Sail Rigging Speed' },
+                      { key: 'hullLevel', label: 'Reinforced Storm Hull' },
+                      { key: 'handlingLevel', label: 'Rudder Handling' },
+                      { key: 'cargoLevel', label: 'Cargo & Tackle Hold' },
+                    ] as const
+                  ).map((part) => {
+                    const lv = save.boatUpgrades[part.key];
+                    const cost = lv === 1 ? 75 : 140;
+                    return (
+                      <div key={part.key} className="p-3 rounded-lg bg-[#111b24] border border-[#24394a] flex items-center justify-between gap-2">
+                        <div>
+                          <div className="text-xs font-semibold text-[#f3efe6]">{part.label}</div>
+                          <div className="text-[11px] font-mono-tabular text-[#7be3f5]">Lv.{lv}/3</div>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={lv >= 3}
+                          onClick={() => upgradeBoatPart(part.key, cost)}
+                          className="px-3 py-1.5 rounded-lg bg-[#48b8c9] hover:bg-[#5ecde0] disabled:opacity-45 text-[#0d1921] text-xs font-bold font-mono-tabular cursor-pointer whitespace-nowrap"
+                        >
+                          {lv >= 3 ? 'Maxed' : `Upgrade (${cost})`}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <span className="text-xs text-[#9aa6b2] mr-1">Vessel Hull Class:</span>
+                  {(['skiff', 'schooner', 'galleon'] as const).map((sk) => (
+                    <button
+                      key={sk}
+                      type="button"
+                      onClick={() => upgradeBoatPart('speedLevel', 0, sk)}
+                      className={`px-3 py-1 rounded text-xs capitalize cursor-pointer ${
+                        save.boatUpgrades.skin === sk
+                          ? 'bg-[#48b8c9] text-[#0d1921] font-semibold'
+                          : 'bg-[#111b24] border border-[#2a4052] text-[#dce4ea]'
+                      }`}
+                    >
+                      {sk}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* BRIGHTFALL CITY EVENTS */}
+          {activeModal === 'EVENTS' && (
+            <div className="space-y-3">
+              <p className="text-xs text-[#aeb9c4]">
+                Switch Brightfall City’s seasonal festival or celebration atmosphere at any time.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {CITY_EVENTS_LIST.map((ev) => {
+                  const active = save.cityEvent === ev.id;
+                  return (
+                    <button
+                      key={ev.id}
+                      type="button"
+                      onClick={() => setCityEvent(ev.id)}
+                      className={`p-4 rounded-lg border text-left transition-colors cursor-pointer ${
+                        active ? 'bg-[#22303c] border-[#e0a943]' : 'bg-[#18222c] border-[#2d3e4f] hover:border-[#4b647a]'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-semibold text-[#f3efe6]">{ev.name}</span>
+                        {active && <span className="text-xs font-semibold text-[#e0a943]">Active</span>}
+                      </div>
+                      <p className="text-xs text-[#aeb9c4] mt-1">{ev.desc}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* WILDLIFE & HORIZON PHOTO ALBUM */}
+          {activeModal === 'PHOTOS' && (
+            <div className="space-y-4">
+              <div className="p-3.5 rounded-lg bg-[#19232d] border border-[#2d3e4f] flex flex-wrap items-center justify-between gap-3">
+                <div className="text-xs text-[#b8c4ce]">
+                  Press <strong className="text-[#f5cc6b]">[P]</strong> or click the Camera icon outdoors to photograph giant roaming wildlife and scenic regions.
+                </div>
+                {!hud.interiorId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveModal(null);
+                      gameBridge.takePhoto();
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#e0a943] hover:bg-[#ebb754] text-[#111921] text-xs font-semibold whitespace-nowrap cursor-pointer"
+                  >
+                    <Camera className="w-3.5 h-3.5" /> Snap Photo Now
+                  </button>
+                )}
+              </div>
+
+              <div>
+                <h3 className="text-xs font-semibold text-[#87d4c8] mb-2">Giant Roaming Creatures Field Checklist</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {GIANT_WILDLIFE_CHECKLIST.map((gw) => {
+                    const shot = save.photos.some((p) => p.subjectId === gw.id);
+                    return (
+                      <div
+                        key={gw.id}
+                        className={`p-3 rounded-lg border text-xs ${
+                          shot ? 'bg-[#1a2b26] border-emerald-500/45' : 'bg-[#151e27] border-[#273645]'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between font-semibold">
+                          <span className="text-[#f3efe6]">{gw.name}</span>
+                          <span className={shot ? 'text-emerald-400' : 'text-[#8d9ca8]'}>
+                            {shot ? 'Photographed' : gw.region}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-[#aeb9c4] mt-1">{gw.hint}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-xs font-semibold text-[#e0a943] mb-2">Saved Snapshots ({save.photos.length})</h3>
+                {save.photos.length === 0 ? (
+                  <p className="text-xs text-[#9aa6b2] py-4 text-center">
+                    No photos in your album yet. Walk near wild creatures or scenic shrines and press [P]!
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {save.photos.map((ph) => (
+                      <div key={ph.id} className="p-3 rounded-lg bg-[#19232d] border border-[#2d3e4f] flex items-center justify-between gap-2">
+                        <div>
+                          <div className="text-xs font-semibold text-[#f3efe6]">{ph.title}</div>
+                          <div className="text-[11px] text-[#87d4c8]">{REGIONS[ph.region]?.name ?? ph.region}</div>
+                        </div>
+                        <span className="text-[10px] font-mono-tabular text-[#8d9ca8]">
+                          {new Date(ph.takenAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* QUESTS & RESTORATION */}
           {activeModal === 'QUESTS' && (
             <div className="space-y-4">
-              <div className="flex items-center gap-2 p-1 rounded-lg bg-[#0f161d] w-fit border border-[#263442]">
-                <button
-                  type="button"
-                  onClick={() => setQuestTab('quests')}
-                  className={`px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap cursor-pointer ${
-                    questTab === 'quests' ? 'bg-[#e0a943] text-[#111921]' : 'text-[#b8c4ce] hover:text-white'
-                  }`}
-                >
-                  Active & Completed Quests
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setQuestTab('restoration')}
-                  className={`px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap cursor-pointer ${
-                    questTab === 'restoration' ? 'bg-[#e0a943] text-[#111921]' : 'text-[#b8c4ce] hover:text-white'
-                  }`}
-                >
-                  Aetheria Restoration ({getTotalRestorationPercent()}%)
-                </button>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2 p-1 rounded-lg bg-[#0f161d] w-fit border border-[#263442]">
+                  <button
+                    type="button"
+                    onClick={() => setQuestTab('quests')}
+                    className={`px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap cursor-pointer ${
+                      questTab === 'quests' ? 'bg-[#e0a943] text-[#111921]' : 'text-[#b8c4ce] hover:text-white'
+                    }`}
+                  >
+                    Quests ({Object.values(save.quests).filter((q) => q.status === 'active').length} Active)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuestTab('restoration')}
+                    className={`px-3.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap cursor-pointer ${
+                      questTab === 'restoration' ? 'bg-[#e0a943] text-[#111921]' : 'text-[#b8c4ce] hover:text-white'
+                    }`}
+                  >
+                    Aetheria Restoration ({getTotalRestorationPercent()}%)
+                  </button>
+                </div>
+
+                {questTab === 'quests' && (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {(
+                      [
+                        { id: 'active', label: 'Active' },
+                        { id: 'main', label: 'Main' },
+                        { id: 'campaign', label: 'Islands' },
+                        { id: 'side', label: 'Side' },
+                        { id: 'completed', label: 'Done' },
+                      ] as const
+                    ).map((f) => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => setQuestFilter(f.id)}
+                        className={`px-2.5 py-1 rounded text-[11px] font-semibold whitespace-nowrap cursor-pointer ${
+                          questFilter === f.id
+                            ? 'bg-[#2a3f52] text-[#f5cc6b] border border-[#4a6b88]'
+                            : 'bg-[#0f161d] text-[#9aa6b2] hover:text-white'
+                        }`}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {questTab === 'quests' ? (
                 <div className="space-y-2.5">
-                  {QUEST_ORDER.map((qId) => {
+                  {QUEST_ORDER.filter((qId) => {
+                    const def = QUESTS[qId];
+                    const state = save.quests[qId];
+                    if (!def || !state) return false;
+                    if (questFilter === 'active') return state.status === 'active';
+                    if (questFilter === 'completed') return state.status === 'completed';
+                    return def.category === questFilter;
+                  }).map((qId) => {
                     const def = QUESTS[qId];
                     const state = save.quests[qId];
                     if (!state) return null;
@@ -906,7 +1509,12 @@ export const GameMenusModal: React.FC = () => {
                     return (
                       <div key={qId} className="p-4 rounded-lg bg-[#19232d] border border-[#2d3e4f]">
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                          <h3 className="text-sm font-semibold text-[#f3efe6]">{def.title}</h3>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="text-sm font-semibold text-[#f3efe6]">{def.title}</h3>
+                            <span className="text-[11px] text-[#87d4c8]">
+                              ({REGIONS[def.region]?.name ?? def.region})
+                            </span>
+                          </div>
                           <div className="flex items-center gap-2">
                             {state.status === 'active' && (
                               <button
@@ -932,6 +1540,9 @@ export const GameMenusModal: React.FC = () => {
                           </div>
                         </div>
                         <p className="text-xs text-[#aeb9c4] mt-1">{def.summary}</p>
+                        {def.locationHint && (
+                          <p className="text-[11px] text-[#9aa6b2] mt-0.5">Area: {def.locationHint}</p>
+                        )}
                         <div className="mt-2.5 space-y-1">
                           {state.objectives.map((o) => (
                             <div key={o.id} className="flex items-center justify-between text-xs text-[#dce4ea]">
@@ -945,9 +1556,16 @@ export const GameMenusModal: React.FC = () => {
                       </div>
                     );
                   })}
-                  {Object.keys(save.quests).length === 0 && (
+                  {QUEST_ORDER.filter((qId) => {
+                    const def = QUESTS[qId];
+                    const state = save.quests[qId];
+                    if (!def || !state) return false;
+                    if (questFilter === 'active') return state.status === 'active';
+                    if (questFilter === 'completed') return state.status === 'completed';
+                    return def.category === questFilter;
+                  }).length === 0 && (
                     <p className="text-sm text-[#9aa6b2] py-6 text-center">
-                      No quests started yet—speak with Mayor Theo in Brightfall Square!
+                      No quests in this filter yet—explore islands or speak with Mayor Theo in Brightfall!
                     </p>
                   )}
                 </div>
@@ -955,7 +1573,7 @@ export const GameMenusModal: React.FC = () => {
                 <div className="space-y-3">
                   {Object.values(RESTORATION_PROJECTS).map((proj) => {
                     const done = save.completedRestorations.includes(proj.id);
-                    const isTownProject = proj.region === 'brightfall';
+                    const isBuildableFromBoard = proj.sparksCost > 0 && proj.id !== 'rest_newbrook_village';
                     return (
                       <div
                         key={proj.id}
@@ -970,7 +1588,7 @@ export const GameMenusModal: React.FC = () => {
                           <p className="text-xs text-[#aeb9c4]">{proj.description}</p>
                           <p className="text-[11px] text-[#87d4c8]">{proj.visualEffect}</p>
                         </div>
-                        {!done && isTownProject && (
+                        {!done && isBuildableFromBoard && (
                           <button
                             type="button"
                             onClick={() => completeRestoration(proj.id)}
@@ -1029,7 +1647,7 @@ export const GameMenusModal: React.FC = () => {
           {/* COLLECTION JOURNAL */}
           {activeModal === 'JOURNAL' && (
             <div className="space-y-5">
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center font-mono-tabular">
+              <div className="grid grid-cols-2 sm:grid-cols-6 gap-3 text-center font-mono-tabular">
                 <div className="p-3 rounded-lg bg-[#19232d] border border-[#2d3e4f]">
                   <div className="text-lg font-bold text-[#f3efe6]">{save.metNpcs.length}/{NPCS.length}</div>
                   <div className="text-[11px] text-[#9aa6b2]">Residents Met</div>
@@ -1039,12 +1657,16 @@ export const GameMenusModal: React.FC = () => {
                   <div className="text-[11px] text-[#9aa6b2]">Landmarks</div>
                 </div>
                 <div className="p-3 rounded-lg bg-[#19232d] border border-[#2d3e4f]">
-                  <div className="text-lg font-bold text-[#f3efe6]">{save.defeatedGuardians.length}/10</div>
+                  <div className="text-lg font-bold text-[#f3efe6]">{save.defeatedGuardians.length}/12</div>
                   <div className="text-[11px] text-[#9aa6b2]">Guardians Purified</div>
                 </div>
                 <div className="p-3 rounded-lg bg-[#19232d] border border-[#2d3e4f]">
                   <div className="text-lg font-bold text-[#f3efe6]">{save.discoveredFish.length}/{FISH_SPECIES.length}</div>
                   <div className="text-[11px] text-[#9aa6b2]">Fish Caught</div>
+                </div>
+                <div className="p-3 rounded-lg bg-[#19232d] border border-[#2d3e4f]">
+                  <div className="text-lg font-bold text-[#f3efe6]">{save.photos.length}</div>
+                  <div className="text-[11px] text-[#9aa6b2]">Photos Saved</div>
                 </div>
                 <div className="p-3 rounded-lg bg-[#19232d] border border-[#2d3e4f]">
                   <div className="text-lg font-bold text-[#f3efe6]">{save.discoveredSecrets.length}/3</div>
@@ -1060,6 +1682,7 @@ export const GameMenusModal: React.FC = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   {FISH_SPECIES.map((fish) => {
                     const caught = save.discoveredFish.includes(fish.id);
+                    const best = save.fishRecords[fish.id] ?? 0;
                     return (
                       <div
                         key={fish.id}
@@ -1069,7 +1692,9 @@ export const GameMenusModal: React.FC = () => {
                       >
                         <div className="flex items-center justify-between font-semibold">
                           <span className="text-[#f3efe6]">{caught ? fish.name : 'Unknown Species'}</span>
-                          <span className={caught ? 'text-[#7be3f5]' : 'text-[#6d7b88]'}>{fish.rarity}</span>
+                          <span className={caught ? 'text-[#7be3f5]' : 'text-[#6d7b88]'}>
+                            {fish.rarity}{best > 0 ? ` · Best ${best}pt` : ''}
+                          </span>
                         </div>
                         <p className="text-[11px] text-[#aeb9c4] mt-1">
                           {caught ? fish.description : `Waters: ${fish.locations.join(', ')}`}
@@ -1083,7 +1708,7 @@ export const GameMenusModal: React.FC = () => {
                 </div>
               </div>
 
-              {/* 10 Mini-Game Personal Bests */}
+              {/* 13 Mini-Game Personal Bests */}
               <div>
                 <h3 className="text-xs font-semibold text-[#e0a943] mb-2">Mini-Game Personal Bests</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-xs font-mono-tabular">
@@ -1096,9 +1721,9 @@ export const GameMenusModal: React.FC = () => {
                 </div>
               </div>
 
-              {/* 10 Guardians */}
+              {/* 12 Guardians */}
               <div>
-                <h3 className="text-xs font-semibold text-[#87d4c8] mb-2">Guardians of Aetheria</h3>
+                <h3 className="text-xs font-semibold text-[#87d4c8] mb-2">Guardians of Aetheria (12)</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   {Object.values(GUARDIANS).map((g) => {
                     const done = save.defeatedGuardians.includes(g.id);
@@ -1143,9 +1768,36 @@ export const GameMenusModal: React.FC = () => {
             </div>
           )}
 
-          {/* SETTINGS & KEY BINDINGS */}
+          {/* SETTINGS, DIFFICULTY & KEY BINDINGS */}
           {activeModal === 'SETTINGS' && (
             <div className="space-y-5">
+              <div className="p-3.5 rounded-lg bg-[#19232d] border border-[#2d3e4f] space-y-2">
+                <div className="text-xs font-semibold text-[#e0a943]">Adventure Difficulty Mode</div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {(
+                    [
+                      { id: 'explorer', label: 'Explorer', desc: 'Gentle incoming damage & relaxed encounters' },
+                      { id: 'adventure', label: 'Adventure', desc: 'Balanced tactical combat & exploration' },
+                      { id: 'heroic', label: 'Heroic', desc: 'Fierce foes & high-stakes Guardian duels' },
+                    ] as { id: DifficultyMode; label: string; desc: string }[]
+                  ).map((d) => (
+                    <button
+                      key={d.id}
+                      type="button"
+                      onClick={() => setDifficulty(d.id)}
+                      className={`p-2.5 rounded-lg border text-left cursor-pointer ${
+                        save.settings.difficulty === d.id
+                          ? 'bg-[#253646] border-[#e0a943]'
+                          : 'bg-[#131b23] border-[#293947]'
+                      }`}
+                    >
+                      <div className="text-xs font-semibold text-[#f3efe6]">{d.label}</div>
+                      <div className="text-[10px] text-[#9aa6b2] mt-0.5">{d.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="space-y-3">
                 <label className="flex items-center justify-between text-sm text-[#dce4ea]">
                   <span>Music Volume</span>

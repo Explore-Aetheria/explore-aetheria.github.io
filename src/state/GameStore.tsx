@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { soundEngine } from '../audio/SoundEngine';
 import { CHARACTERS } from '../data/characters';
+import { COMPANIONS } from '../data/companions';
 import { COOKING_RECIPES, EQUIPMENT_CATALOG, FISH_SPECIES } from '../data/equipmentAndFood';
 import { NPCS } from '../data/npcs';
 import { GUARDIANS, INVENTORY_CATALOG, LANDMARKS, MAIN_OFFSET_X, MAIN_OFFSET_Y } from '../data/progression';
@@ -8,20 +9,28 @@ import { QUESTS, RESTORATION_PROJECTS } from '../data/quests';
 import { gameBridge } from '../game/GameBridge';
 import {
   ActiveModal,
+  AirshipState,
+  BoatUpgradeState,
   CharacterId,
+  CityEventType,
+  CompanionId,
+  DifficultyMode,
   GameScreenState,
   GameSettings,
   GuardianId,
   HouseState,
   MapWaypoint,
   MiniGameId,
+  MonsterSpeciesId,
   OutfitId,
   PlayerHudSnapshot,
   RegionId,
   SaveData,
+  TutorialStepId,
   UpgradeNodeDef,
   WeatherType,
 } from '../types/game';
+import { MONSTER_SPECIES } from '../data/monsters';
 
 const STORAGE_KEY = 'bounce_back_save_v1';
 
@@ -34,11 +43,78 @@ const ISLAND_LANDMARK_IDS = [
   'lm_island_lost',
 ];
 
+export const VILLAGE_BUILDINGS_CATALOG: {
+  id: string;
+  name: string;
+  cost: number;
+  residentName: string;
+  description: string;
+}[] = [
+  {
+    id: 'house_1',
+    name: 'Timber Frontier Cottage',
+    cost: 45,
+    residentName: 'Carpenter Jude',
+    description: 'Warm timber cottage anchoring Newbrook’s residential lane.',
+  },
+  {
+    id: 'bakery',
+    name: 'Newbrook Hearth Bakery',
+    cost: 60,
+    residentName: 'Baker Nina',
+    description: 'Bakes fresh village loaves and supplies settlers with warm pastries.',
+  },
+  {
+    id: 'workshop',
+    name: 'Artisan Gear Workshop',
+    cost: 70,
+    residentName: 'Artisan Cole',
+    description: 'Smithy & carpentry workshop keeping Newbrook’s tools sharp.',
+  },
+  {
+    id: 'garden',
+    name: 'Sunpetal Village Park & Fountain',
+    cost: 55,
+    residentName: 'Botanist Wren',
+    description: 'Blooming garden square with a luminous spring fountain.',
+  },
+  {
+    id: 'bridge',
+    name: 'Riverfoot Timber Bridge',
+    cost: 50,
+    residentName: 'Trail Scout Pip',
+    description: 'Connects Newbrook across the valley toward Brightfall’s northern road.',
+  },
+  {
+    id: 'town_hall',
+    name: 'Newbrook Village Hall',
+    cost: 90,
+    residentName: 'Clerk Rowan',
+    description: 'Civic hall organizing town charters, festivals, and trade routes.',
+  },
+  {
+    id: 'house_2',
+    name: 'Lakeside Settler Villa',
+    cost: 80,
+    residentName: 'Settler Maya',
+    description: 'Two-story stone & timber residence welcoming new families.',
+  },
+  {
+    id: 'observatory',
+    name: 'Newbrook Sky Observatory',
+    cost: 120,
+    residentName: 'Astronomer Sol',
+    description: 'Golden domed observatory charting Aetheria’s stars and drifting islands.',
+  },
+];
+
 export const DEFAULT_SETTINGS: GameSettings = {
   musicVolume: 0.45,
   sfxVolume: 0.65,
   muted: false,
   screenShake: true,
+  difficulty: 'adventure',
+  showTutorialPrompts: true,
   keyBindings: {
     up: 'KeyW',
     down: 'KeyS',
@@ -54,10 +130,12 @@ export const DEFAULT_SETTINGS: GameSettings = {
 
 export function createNewSave(settingsOverride?: GameSettings): SaveData {
   return {
-    version: 2,
+    version: 3,
     savedAt: new Date().toISOString(),
     activeCharacter: 'explorer',
     unlockedCharacters: ['explorer', 'inventor', 'mystic'],
+    activeCompanion: 'comp_fox',
+    unlockedCompanions: ['comp_fox'],
     characterOutfits: {
       explorer: 'default',
       inventor: 'default',
@@ -67,27 +145,56 @@ export function createNewSave(settingsOverride?: GameSettings): SaveData {
       chronomancer: 'default',
       pyromancer: 'default',
       skywarden: 'default',
+      subterranean: 'default',
+      riftwalker: 'default',
     },
     unlockedOutfits: ['default'],
-    sparks: 45,
+    sparks: 60,
     xp: 0,
     level: 1,
     hunger: 100,
     timeOfDay: 9.0,
     weather: 'sunny',
+    cityEvent: 'christmas',
+    movingIslandSlot: 0,
+    movingIslandFound: false,
     boatLevel: 1,
+    boatUpgrades: {
+      speedLevel: 1,
+      hullLevel: 1,
+      handlingLevel: 1,
+      cargoLevel: 1,
+      skin: 'skiff',
+    },
     boatPos: { x: (MAIN_OFFSET_X + 66) * 32 + 16, y: (MAIN_OFFSET_Y + 97) * 32 + 16 },
+    airship: {
+      unlocked: false,
+      speedLevel: 1,
+      altitudeLevel: 1,
+      hullColor: 'gold',
+      pos: { x: (MAIN_OFFSET_X + 76) * 32 + 16, y: (MAIN_OFFSET_Y + 37) * 32 + 16 },
+    },
+    village: {
+      discovered: false,
+      buildings: [],
+      residents: [],
+    },
     equippedWeapon: 'eq_traveler_wand',
+    equippedArmor: null,
     equippedAccessory: null,
     equippedRod: 'rod_bamboo',
-    ownedEquipment: ['eq_traveler_wand', 'rod_bamboo'],
-    equipmentLevels: { eq_traveler_wand: 1, rod_bamboo: 1 },
+    equippedLine: 'line_hemp',
+    equippedBait: 'bait_crumb',
+    equippedHook: 'hook_iron',
+    ownedEquipment: ['eq_traveler_wand', 'rod_bamboo', 'line_hemp', 'bait_crumb', 'hook_iron'],
+    equipmentLevels: { eq_traveler_wand: 1, rod_bamboo: 1, line_hemp: 1, bait_crumb: 1, hook_iron: 1 },
     house: {
       tier: 1,
       placedDecor: [],
       wallColor: '#4c3e73',
       floorStyle: 'oak',
       storage: [],
+      invitedNpcs: [],
     },
     playerPos: { x: (MAIN_OFFSET_X + 54) * 32 + 16, y: (MAIN_OFFSET_Y + 59) * 32 + 16, interiorId: null },
     inventory: [
@@ -99,6 +206,8 @@ export function createNewSave(settingsOverride?: GameSettings): SaveData {
     discoveredLandmarks: ['lm_brightfall_square', 'lm_player_house'],
     discoveredSecrets: [],
     discoveredFish: [],
+    fishRecords: {},
+    photos: [],
     openedChests: [],
     solvedPuzzles: [],
     defeatedGuardians: [],
@@ -111,11 +220,17 @@ export function createNewSave(settingsOverride?: GameSettings): SaveData {
       resonance: 0,
     },
     miniGameBestScores: {},
+    miniGameLeaderboards: {},
     achievements: [],
     trackedQuestId: null,
     customWaypoint: null,
     activeShopId: 'market',
     endingSeen: false,
+    tutorialStep: 'move',
+    tutorialCompleted: false,
+    bestiary: {},
+    npcFriendship: {},
+    collectedClues: [],
     settings: settingsOverride ?? DEFAULT_SETTINGS,
   };
 }
@@ -129,21 +244,46 @@ function loadSaveFromStorage(): SaveData | null {
 
     const base = createNewSave();
     let playerPos = parsed.playerPos ?? base.playerPos;
+    let boatPos = parsed.boatPos ?? base.boatPos;
 
-    // Seamless backward-compatible v1 -> v2 coordinate migration onto Mainland Offset
+    // Seamless backward-compatible v1/v2 -> v3 coordinate migration onto 360x270 map
     if (parsed.version < 2 && playerPos && playerPos.interiorId === null) {
       playerPos = {
         x: playerPos.x + MAIN_OFFSET_X * 32,
         y: playerPos.y + MAIN_OFFSET_Y * 32,
         interiorId: null,
       };
+    } else if (parsed.version === 2 && playerPos && playerPos.interiorId === null) {
+      // Map v2 coordinates cleanly onto expanded Brightfall Plaza if inside mainland
+      playerPos = base.playerPos;
+      boatPos = base.boatPos;
     }
 
+    const parsedBoatLvl = parsed.boatLevel ?? 1;
     const migrated: SaveData = {
       ...base,
       ...parsed,
-      version: 2,
+      version: 3,
       playerPos,
+      boatPos,
+      boatUpgrades: {
+        speedLevel: parsed.boatUpgrades?.speedLevel ?? parsedBoatLvl,
+        hullLevel: parsed.boatUpgrades?.hullLevel ?? parsedBoatLvl,
+        handlingLevel: parsed.boatUpgrades?.handlingLevel ?? parsedBoatLvl,
+        cargoLevel: parsed.boatUpgrades?.cargoLevel ?? parsedBoatLvl,
+        skin: parsed.boatUpgrades?.skin ?? (parsedBoatLvl >= 3 ? 'galleon' : parsedBoatLvl === 2 ? 'schooner' : 'skiff'),
+      },
+      airship: {
+        ...base.airship,
+        ...(parsed.airship ?? {}),
+        unlocked:
+          Boolean(parsed.airship?.unlocked) ||
+          Boolean(parsed.completedRestorations?.includes('rest_brightfall_railway')),
+      },
+      village: {
+        ...base.village,
+        ...(parsed.village ?? {}),
+      },
       characterOutfits: {
         ...base.characterOutfits,
         ...(parsed.characterOutfits ?? {}),
@@ -151,6 +291,7 @@ function loadSaveFromStorage(): SaveData | null {
       house: {
         ...base.house,
         ...(parsed.house ?? {}),
+        invitedNpcs: parsed.house?.invitedNpcs ?? [],
       },
       upgrades: {
         ...base.upgrades,
@@ -159,14 +300,28 @@ function loadSaveFromStorage(): SaveData | null {
       discoveredLandmarks: Array.from(
         new Set([...(parsed.discoveredLandmarks ?? []), 'lm_brightfall_square', 'lm_player_house'])
       ),
-      ownedEquipment: Array.from(new Set([...(parsed.ownedEquipment ?? []), 'eq_traveler_wand', 'rod_bamboo'])),
+      ownedEquipment: Array.from(
+        new Set([...(parsed.ownedEquipment ?? []), 'eq_traveler_wand', 'rod_bamboo', 'line_hemp', 'bait_crumb', 'hook_iron'])
+      ),
       equipmentLevels: {
         ...base.equipmentLevels,
         ...(parsed.equipmentLevels ?? {}),
       },
+      fishRecords: parsed.fishRecords ?? {},
+      photos: parsed.photos ?? [],
+      activeCompanion: parsed.activeCompanion !== undefined ? parsed.activeCompanion : 'comp_fox',
+      unlockedCompanions: Array.from(new Set(['comp_fox', ...(parsed.unlockedCompanions ?? [])])) as CompanionId[],
+      miniGameLeaderboards: parsed.miniGameLeaderboards ?? {},
+      tutorialStep: parsed.tutorialStep ?? (parsed.metNpcs && parsed.metNpcs.length > 0 ? 'done' : 'move'),
+      tutorialCompleted: parsed.tutorialCompleted ?? Boolean(parsed.metNpcs && parsed.metNpcs.length > 0),
+      bestiary: parsed.bestiary ?? {},
+      npcFriendship: parsed.npcFriendship ?? {},
+      collectedClues: parsed.collectedClues ?? [],
       settings: {
         ...DEFAULT_SETTINGS,
         ...(parsed.settings ?? {}),
+        difficulty: parsed.settings?.difficulty ?? 'adventure',
+        showTutorialPrompts: parsed.settings?.showTutorialPrompts ?? true,
         keyBindings: {
           ...DEFAULT_SETTINGS.keyBindings,
           ...(parsed.settings?.keyBindings ?? {}),
@@ -203,6 +358,8 @@ interface GameContextValue {
   pushToast: (text: string) => void;
   selectCharacter: (id: CharacterId) => void;
   setCharacterOutfit: (charId: CharacterId, outfit: OutfitId) => void;
+  selectCompanion: (id: CompanionId | null) => void;
+  adoptCompanion: (id: CompanionId) => boolean;
   startQuest: (questId: string) => void;
   completeQuest: (questId: string) => void;
   completeRestoration: (projectId: string) => boolean;
@@ -216,6 +373,12 @@ interface GameContextValue {
   upgradeEquipment: (eqId: string) => boolean;
   equipItem: (eqId: string) => void;
   upgradeBoat: () => boolean;
+  upgradeBoatPart: (part: keyof Omit<BoatUpgradeState, 'skin'>, cost: number, skin?: BoatUpgradeState['skin']) => boolean;
+  upgradeAirship: (part: 'speedLevel' | 'altitudeLevel' | 'hullColor', cost: number, hullColor?: AirshipState['hullColor']) => boolean;
+  buildVillageStructure: (buildingId: string) => boolean;
+  setCityEvent: (event: CityEventType) => void;
+  inviteNpcToHouse: (npcId: string) => void;
+  setDifficulty: (mode: DifficultyMode) => void;
   sleepUntil: (targetHour: number) => void;
   upgradeHouse: () => boolean;
   toggleHouseDecor: (itemId: string) => void;
@@ -231,6 +394,10 @@ interface GameContextValue {
   fastTravel: (landmarkId: string) => void;
   updateSettings: (partial: Partial<GameSettings>) => void;
   manualSave: () => void;
+  advanceTutorial: (stepCompleted: TutorialStepId) => void;
+  skipTutorial: () => void;
+  replayTutorial: () => void;
+  collectMailboxClue: () => void;
   getRegionRestorationPercent: (region: RegionId) => number;
   getTotalRestorationPercent: () => number;
 }
@@ -264,17 +431,19 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     abilityCooldownRemaining: 0,
     abilityCooldownTotal: 6,
     region: 'brightfall',
-    regionName: 'Brightfall Town',
+    regionName: 'Brightfall City',
     interiorId: null,
     interiorName: null,
     playerX: save.playerPos.x,
     playerY: save.playerPos.y,
     facingAngle: Math.PI / 2,
     isSailing: false,
+    isFlying: false,
     isSwimming: false,
     weather: save.weather,
     timeOfDay: save.timeOfDay,
     timePhase: 'morning',
+    cityEvent: save.cityEvent,
     activeBuff: null,
     interactPrompt: null,
     activeGuardian: null,
@@ -326,23 +495,122 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       soundEngine.playMusic('minigame');
     } else if (hud.activeGuardian) {
       soundEngine.playMusic('guardian');
+    } else if (hud.region === 'brightfall' && save.cityEvent === 'christmas') {
+      soundEngine.playMusic('christmas');
     } else {
       soundEngine.playMusic(hud.region);
     }
-  }, [screen, activeMiniGame, hud.activeGuardian, hud.region]);
+  }, [screen, activeMiniGame, hud.activeGuardian, hud.region, save.cityEvent]);
+
+  // Periodically drift the Mysterious Moving Island while undiscovered
+  useEffect(() => {
+    if (screen !== 'PLAYING' || save.movingIslandFound) return;
+    const timer = window.setInterval(() => {
+      updateSave((prev) => {
+        if (prev.movingIslandFound) return prev;
+        return { ...prev, movingIslandSlot: (prev.movingIslandSlot + 1) % 4 };
+      });
+    }, 110000);
+    return () => window.clearInterval(timer);
+  }, [screen, save.movingIslandFound, updateSave]);
 
   const setScreen = useCallback((s: GameScreenState) => {
     setScreenState(s);
     gameBridge.setPaused(s !== 'PLAYING');
   }, []);
 
+  const TUTORIAL_ORDER: TutorialStepId[] = ['move', 'talk_npc', 'collect_or_attack', 'use_ability', 'open_map', 'done'];
+
+  const advanceTutorial = useCallback(
+    (stepCompleted: TutorialStepId) => {
+      updateSave((prev) => {
+        if (prev.tutorialCompleted || prev.tutorialStep !== stepCompleted) return prev;
+        const idx = TUTORIAL_ORDER.indexOf(stepCompleted);
+        const nextStep = TUTORIAL_ORDER[Math.min(TUTORIAL_ORDER.length - 1, idx + 1)];
+        const isDone = nextStep === 'done';
+        soundEngine.playTutorialStep();
+        if (isDone) {
+          pushToast('Guided Tutorial Complete! +25 Luminos Sparks earned.');
+        }
+        return {
+          ...prev,
+          tutorialStep: nextStep,
+          tutorialCompleted: isDone,
+          sparks: isDone ? prev.sparks + 25 : prev.sparks,
+        };
+      });
+    },
+    [pushToast, updateSave]
+  );
+
+  const skipTutorial = useCallback(() => {
+    soundEngine.playUiClick();
+    updateSave((prev) => ({
+      ...prev,
+      tutorialStep: 'done',
+      tutorialCompleted: true,
+    }));
+    pushToast('Tutorial skipped — press [?] anytime for the Help & Controls Guide.');
+  }, [pushToast, updateSave]);
+
+  const replayTutorial = useCallback(() => {
+    soundEngine.playUiClick();
+    updateSave((prev) => ({
+      ...prev,
+      tutorialStep: 'move',
+      tutorialCompleted: false,
+      settings: { ...prev.settings, showTutorialPrompts: true },
+    }));
+    setActiveModalState(null);
+    gameBridge.setPaused(false);
+    pushToast('Guided Tutorial restarted!');
+  }, [pushToast, updateSave]);
+
+  const MAILBOX_LETTERS: { id: string; msg: string; sparks: number }[] = [
+    {
+      id: 'clue_nyx_cart',
+      msg: 'Postcard from Nyx: "My Lantern Cart sets up in Brightfall Square from 19:00 to 05:00 — bring your rod south for Moonlight Lantern Eels!" (+15 Sparks)',
+      sparks: 15,
+    },
+    {
+      id: 'clue_woods_cache',
+      msg: 'Scout Note from Mossbrook: "Glowing crystal spires in Whispering Woods point toward an old timber chest west of the river bridge." (+15 Sparks)',
+      sparks: 15,
+    },
+    {
+      id: 'clue_skyport_rail',
+      msg: 'Dispatch from Conductor Bram: "Once Central Railway & Skyport are restored, the Brightfall Express departs hourly and Airship launches from the East Deck!" (+15 Sparks)',
+      sparks: 15,
+    },
+  ];
+
+  const collectMailboxClue = useCallback(() => {
+    soundEngine.playCollect();
+    const cur = saveRef.current;
+    const nextUncollected = MAILBOX_LETTERS.find((l) => !(cur.collectedClues ?? []).includes(l.id));
+    if (nextUncollected) {
+      updateSave((prev) => ({
+        ...prev,
+        collectedClues: [...(prev.collectedClues ?? []), nextUncollected.id],
+        sparks: prev.sparks + nextUncollected.sparks,
+      }));
+      pushToast(nextUncollected.msg);
+    } else {
+      const idx = Math.floor(Math.random() * MAILBOX_LETTERS.length);
+      pushToast(`Homestead Mailbox: ${MAILBOX_LETTERS[idx].msg.replace(' (+15 Sparks)', '')}`);
+    }
+  }, [pushToast, updateSave]);
+
   const setActiveModal = useCallback(
     (m: ActiveModal) => {
       setActiveModalState(m);
       const shouldPause = m !== null || activeDialogueNpcId !== null;
       gameBridge.setPaused(shouldPause);
+      if (m === 'MAP') {
+        advanceTutorial('open_map');
+      }
     },
-    [activeDialogueNpcId]
+    [activeDialogueNpcId, advanceTutorial]
   );
 
   const setActiveDialogueNpcId = useCallback(
@@ -400,28 +668,40 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const qState = nextQuests[qId];
       if (qState.status !== 'active') return;
       const updatedObjs = qState.objectives.map((obj) => {
+        let nextVal = obj.current;
         if (obj.type === 'collect') {
           const qty = s.inventory.find((i) => i.id === obj.targetId)?.quantity ?? 0;
-          const clamped = Math.min(obj.required, qty);
-          if (clamped !== obj.current) changed = true;
-          return { ...obj, current: clamped };
+          nextVal = Math.min(obj.required, qty);
+        } else if (obj.type === 'restore') {
+          nextVal = s.completedRestorations.includes(obj.targetId) ? 1 : 0;
+        } else if (obj.type === 'discover') {
+          nextVal = s.discoveredLandmarks.includes(obj.targetId) ? 1 : 0;
+        } else if (obj.type === 'guardian') {
+          nextVal = s.defeatedGuardians.includes(obj.targetId as GuardianId) ? 1 : 0;
+        } else if (obj.type === 'talk') {
+          nextVal = s.metNpcs.includes(obj.targetId) ? obj.required : obj.current;
+        } else if (obj.type === 'puzzle') {
+          nextVal = s.solvedPuzzles.includes(obj.targetId) ? 1 : 0;
+        } else if (obj.type === 'fish') {
+          nextVal =
+            obj.targetId === 'any_fish'
+              ? Math.min(obj.required, s.discoveredFish.length)
+              : s.discoveredFish.includes(obj.targetId)
+                ? 1
+                : 0;
+        } else if (obj.type === 'photo') {
+          const count =
+            obj.targetId === 'any_giant'
+              ? s.photos.length
+              : s.photos.filter((p) => p.subjectId === obj.targetId).length;
+          nextVal = Math.min(obj.required, count);
+        } else if (obj.type === 'village') {
+          nextVal = Math.min(obj.required, s.village.buildings.length);
+        } else if (obj.type === 'minigame') {
+          nextVal = (s.miniGameBestScores[obj.targetId as MiniGameId] ?? 0) > 0 ? obj.required : obj.current;
         }
-        if (obj.type === 'restore') {
-          const done = s.completedRestorations.includes(obj.targetId) ? 1 : 0;
-          if (done !== obj.current) changed = true;
-          return { ...obj, current: done };
-        }
-        if (obj.type === 'discover') {
-          const done = s.discoveredLandmarks.includes(obj.targetId) ? 1 : 0;
-          if (done !== obj.current) changed = true;
-          return { ...obj, current: done };
-        }
-        if (obj.type === 'guardian') {
-          const done = s.defeatedGuardians.includes(obj.targetId as GuardianId) ? 1 : 0;
-          if (done !== obj.current) changed = true;
-          return { ...obj, current: done };
-        }
-        return obj;
+        if (nextVal !== obj.current) changed = true;
+        return { ...obj, current: nextVal };
       });
       nextQuests[qId] = { ...qState, objectives: updatedObjs };
     });
@@ -464,6 +744,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           ...prev,
           sparks: prev.sparks + def.rewardSparks,
           trackedQuestId: prev.trackedQuestId === questId ? null : prev.trackedQuestId,
+          npcFriendship: {
+            ...(prev.npcFriendship ?? {}),
+            [def.giverNpcId]: ((prev.npcFriendship ?? {})[def.giverNpcId] ?? 0) + 2,
+          },
           quests: {
             ...prev.quests,
             [questId]: {
@@ -490,11 +774,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           };
           pushToast(`New Outfit Unlocked!`);
         }
-        if (next.unlockedCharacters.length >= 8 && !next.achievements.includes('ach_full_party')) {
+        if (next.unlockedCharacters.length >= 10 && !next.achievements.includes('ach_full_party')) {
           next = { ...next, achievements: [...next.achievements, 'ach_full_party'] };
         }
         next = applyXpAndLevel(next, def.rewardXp);
-        return next;
+        return syncCollectObjectives(next);
       });
       soundEngine.playRestoreFanfare();
       pushToast(`Quest Completed: ${def.title} (+${def.rewardSparks} Sparks)`);
@@ -536,6 +820,16 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (projectId === 'rest_brightfall_cafe' && !next.achievements.includes('ach_cafe_open')) {
           next = { ...next, achievements: [...next.achievements, 'ach_cafe_open'] };
         }
+        if (projectId === 'rest_amusement_park' && !next.achievements.includes('ach_park_revival')) {
+          next = { ...next, achievements: [...next.achievements, 'ach_park_revival'] };
+        }
+        if (projectId === 'rest_brightfall_railway') {
+          next = { ...next, airship: { ...next.airship, unlocked: true } };
+          if (!next.achievements.includes('ach_sky_captain')) {
+            next = { ...next, achievements: [...next.achievements, 'ach_sky_captain'] };
+          }
+          pushToast('Grand Skyport & Flying Airship Unlocked! Press [V] outdoors to fly!');
+        }
         next = applyXpAndLevel(next, 90);
         next = syncCollectObjectives(next);
         return next;
@@ -555,7 +849,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       onTalkNpc: (npcId) => {
         soundEngine.unlock();
         updateSave((prev) => {
-          let next = prev;
+          let next: SaveData = {
+            ...prev,
+            npcFriendship: {
+              ...(prev.npcFriendship ?? {}),
+              [npcId]: ((prev.npcFriendship ?? {})[npcId] ?? 0) + 1,
+            },
+          };
           if (!prev.metNpcs.includes(npcId)) {
             next = { ...next, metNpcs: [...next.metNpcs, npcId] };
           }
@@ -576,6 +876,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
           return { ...next, quests: nextQuests };
         });
+        advanceTutorial('talk_npc');
         setActiveDialogueNpcId(npcId);
       },
       onOpenNoticeboard: () => setActiveModal('QUESTS'),
@@ -587,16 +888,30 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       },
       onOpenEquipment: () => setActiveModal('EQUIPMENT'),
       onOpenHouse: () => setActiveModal('HOUSE'),
+      onOpenVillage: () => setActiveModal('VILLAGE'),
+      onOpenAirship: () => setActiveModal('AIRSHIP'),
+      onOpenEvents: () => setActiveModal('EVENTS'),
+      onOpenHelp: () => setActiveModal('HELP'),
+      onInspectMailbox: () => collectMailboxClue(),
       onCollectItem: (_colId, itemId, qty) => {
         soundEngine.playCollect();
-        const itemDef = INVENTORY_CATALOG[itemId];
         updateSave((prev) => {
           let next = addItemToSave(prev, itemId, qty);
           next = { ...next, sparks: next.sparks + 8 };
+          if (itemId === 'volcanic_ore' && !next.unlockedCompanions.includes('comp_ember')) {
+            next = { ...next, unlockedCompanions: [...next.unlockedCompanions, 'comp_ember'], activeCompanion: 'comp_ember' };
+            pushToast('Companion Unlocked: Flicker the Ember Sprite!');
+          }
+          if (itemId === 'lumina_gem' && !next.unlockedCompanions.includes('comp_golem')) {
+            next = { ...next, unlockedCompanions: [...next.unlockedCompanions, 'comp_golem'], activeCompanion: 'comp_golem' };
+            pushToast('Companion Unlocked: Cobble the Pebble Golem Pup!');
+          }
           next = applyXpAndLevel(next, 15);
           next = syncCollectObjectives(next);
           return next;
         });
+        advanceTutorial('collect_or_attack');
+        const itemDef = INVENTORY_CATALOG[itemId];
         pushToast(`Collected ${qty}x ${itemDef?.name ?? itemId}`);
       },
       onOpenChest: (chestId, sparks, items) => {
@@ -627,6 +942,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             ...prev,
             discoveredLandmarks: nextDisc,
             sparks: prev.sparks + 15,
+            village:
+              landmarkId === 'lm_newbrook_village'
+                ? { ...prev.village, discovered: true }
+                : prev.village,
           };
           const islandsFound = ISLAND_LANDMARK_IDS.filter((id) => nextDisc.includes(id)).length;
           if (islandsFound >= 3 && !next.achievements.includes('ach_sea_captain')) {
@@ -634,6 +953,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
           if (islandsFound >= 6 && !next.achievements.includes('ach_all_islands')) {
             next = { ...next, achievements: [...next.achievements, 'ach_all_islands'] };
+          }
+          if (nextDisc.length >= 6 && !next.unlockedCompanions.includes('comp_owl')) {
+            next = { ...next, unlockedCompanions: [...next.unlockedCompanions, 'comp_owl'] };
+            pushToast('Companion Unlocked: Hootie the Zephyr Owl!');
           }
           next = applyXpAndLevel(next, 30);
           next = syncCollectObjectives(next);
@@ -669,16 +992,99 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             sparks: prev.sparks + sparks,
           };
           next = applyXpAndLevel(next, 50);
+          next = syncCollectObjectives(next);
           return next;
         });
         pushToast(message);
       },
+      onPhotoCaptured: (subjectId, title, region) => {
+        soundEngine.playShutter();
+        updateSave((prev) => {
+          const already = prev.photos.some((p) => p.subjectId === subjectId);
+          const nextPhotos = already
+            ? prev.photos
+            : [
+                ...prev.photos,
+                {
+                  id: `photo_${subjectId}_${Date.now()}`,
+                  subjectId,
+                  title,
+                  region,
+                  takenAt: new Date().toISOString(),
+                },
+              ];
+          let next: SaveData = {
+            ...prev,
+            sparks: prev.sparks + (already ? 10 : 35),
+            photos: nextPhotos,
+          };
+          if (!next.achievements.includes('ach_photographer')) {
+            next = { ...next, achievements: [...next.achievements, 'ach_photographer'] };
+          }
+          next = applyXpAndLevel(next, already ? 15 : 45);
+          next = syncCollectObjectives(next);
+          return next;
+        });
+        pushToast(`Snapped Photo: ${title}!`);
+      },
+      onMovingIslandFound: () => {
+        soundEngine.playRestoreFanfare();
+        updateSave((prev) => {
+          if (prev.movingIslandFound) return prev;
+          let next: SaveData = {
+            ...prev,
+            movingIslandFound: true,
+            sparks: prev.sparks + 75,
+            discoveredLandmarks: prev.discoveredLandmarks.includes('lm_moving_island')
+              ? prev.discoveredLandmarks
+              : [...prev.discoveredLandmarks, 'lm_moving_island'],
+          };
+          next = applyXpAndLevel(next, 80);
+          next = syncCollectObjectives(next);
+          return next;
+        });
+        pushToast('Discovered Driftspire Isle — The Mysterious Moving Island!');
+      },
       onPlayerDamaged: () => {
         soundEngine.playHit();
       },
-      onDefeatEnemy: (sparks, xp) => {
+      onMonsterSeen: (speciesId: MonsterSpeciesId) => {
+        updateSave((prev) => {
+          const cur = prev.bestiary?.[speciesId];
+          if (cur?.seen) return prev;
+          const sp = MONSTER_SPECIES[speciesId];
+          if (sp) {
+            pushToast(`Bestiary Discovered: ${sp.name} (${sp.element} · ${sp.size})`);
+          }
+          return {
+            ...prev,
+            bestiary: {
+              ...(prev.bestiary ?? {}),
+              [speciesId]: { seen: true, defeated: cur?.defeated ?? 0 },
+            },
+          };
+        });
+      },
+      onDefeatEnemy: (sparks, xp, speciesId) => {
         soundEngine.playCollect();
-        updateSave((prev) => applyXpAndLevel({ ...prev, sparks: prev.sparks + sparks }, xp));
+        updateSave((prev) => {
+          let next = applyXpAndLevel({ ...prev, sparks: prev.sparks + sparks }, xp);
+          if (speciesId) {
+            const cur = prev.bestiary?.[speciesId];
+            next = {
+              ...next,
+              bestiary: {
+                ...(prev.bestiary ?? {}),
+                [speciesId]: { seen: true, defeated: (cur?.defeated ?? 0) + 1 },
+              },
+            };
+          }
+          return next;
+        });
+        advanceTutorial('collect_or_attack');
+      },
+      onTutorialEvent: (step: TutorialStepId) => {
+        advanceTutorial(step);
       },
       onGuardianPurified: (guardianId) => {
         const gDef = GUARDIANS[guardianId];
@@ -716,6 +1122,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             sky_seraph: 'crest_sky',
             phantom_duke: 'crest_haunted',
             eclipse_sovereign: 'crest_lost_kingdom',
+            drift_leviathan: 'crest_moving_island',
+            rift_archon: 'crest_rift_archon',
           };
           const crestId = crestMap[guardianId];
           if (crestId) next = addItemToSave(next, crestId, 1);
@@ -744,8 +1152,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
               next = { ...next, achievements: [...next.achievements, 'ach_bounce_back'] };
             }
           }
-          if (next.unlockedCharacters.length >= 8 && !next.achievements.includes('ach_full_party')) {
+          if (next.unlockedCharacters.length >= 10 && !next.achievements.includes('ach_full_party')) {
             next = { ...next, achievements: [...next.achievements, 'ach_full_party'] };
+          }
+          if (next.defeatedGuardians.length >= 2 && !next.unlockedCompanions.includes('comp_firefly')) {
+            next = { ...next, unlockedCompanions: [...next.unlockedCompanions, 'comp_firefly'] };
+            pushToast('Companion Unlocked: Luma the Lumina Firefly!');
           }
 
           next = applyXpAndLevel(next, 180);
@@ -772,6 +1184,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       onBoatMoved: (x, y) => {
         setSave((prev) => {
           const next = { ...prev, boatPos: { x, y } };
+          persistSave(next);
+          return next;
+        });
+      },
+      onAirshipMoved: (x, y) => {
+        setSave((prev) => {
+          const next = { ...prev, airship: { ...prev.airship, pos: { x, y } } };
           persistSave(next);
           return next;
         });
@@ -811,7 +1230,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setActiveModalState(null);
     setActiveDialogueNpcIdState(null);
     setScreen('PLAYING');
-    pushToast('Welcome to Brightfall Town! Speak with Mayor Theo or visit Your Homestead.');
+    pushToast('Welcome to Brightfall City! Celebrate the Festival & speak with Mayor Theo!');
   }, [persistSave, pushToast, setScreen]);
 
   const continueGame = useCallback(() => {
@@ -843,6 +1262,40 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }));
     },
     [updateSave]
+  );
+
+  const selectCompanion = useCallback(
+    (id: CompanionId | null) => {
+      if (id && !saveRef.current.unlockedCompanions.includes(id)) return;
+      soundEngine.playUiClick();
+      updateSave((prev) => ({ ...prev, activeCompanion: id }));
+      if (id) pushToast(`${COMPANIONS[id].name} (${COMPANIONS[id].species}) is now following you!`);
+      else pushToast('Companion dismissed to rest at Homestead.');
+    },
+    [pushToast, updateSave]
+  );
+
+  const adoptCompanion = useCallback(
+    (id: CompanionId): boolean => {
+      const def = COMPANIONS[id];
+      const cur = saveRef.current;
+      if (cur.unlockedCompanions.includes(id)) return true;
+      const cost = def.price ?? 100;
+      if (cur.sparks < cost) {
+        pushToast(`Need ${cost} Sparks to adopt ${def.name} (${def.species}).`);
+        return false;
+      }
+      soundEngine.playRestoreFanfare();
+      updateSave((prev) => ({
+        ...prev,
+        sparks: prev.sparks - cost,
+        unlockedCompanions: [...prev.unlockedCompanions, id],
+        activeCompanion: id,
+      }));
+      pushToast(`Adopted ${def.name} the ${def.species}!`);
+      return true;
+    },
+    [pushToast, updateSave]
   );
 
   const buyUpgrade = useCallback(
@@ -901,7 +1354,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         pushToast('Quest keepsakes and trophies cannot be sold.');
         return false;
       }
-      const sellValue = Math.max(4, Math.floor((def.value || 10) * 0.8)) * qty;
+      const cargoBonus = 1 + ((saveRef.current.boatUpgrades?.cargoLevel ?? 1) - 1) * 0.1;
+      const sellValue = Math.max(4, Math.floor((def.value || 10) * 0.8 * cargoBonus)) * qty;
       soundEngine.playCollect();
       updateSave((prev) => {
         let next = removeItemFromSave(prev, itemId, qty);
@@ -962,6 +1416,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
         next = addItemToSave(next, rec.outputItemId, 1);
         next = applyXpAndLevel(next, 25);
+        next = syncCollectObjectives(next);
         return next;
       });
       pushToast(`Cooked ${rec.name}!`);
@@ -1009,8 +1464,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         next.ownedEquipment = [...next.ownedEquipment, eqId];
         next.equipmentLevels = { ...next.equipmentLevels, [eqId]: 1 };
         if (eq.slot === 'weapon') next.equippedWeapon = eqId;
+        else if (eq.slot === 'armor') next.equippedArmor = eqId;
         else if (eq.slot === 'accessory') next.equippedAccessory = eqId;
         else if (eq.slot === 'rod') next.equippedRod = eqId;
+        else if (eq.slot === 'line') next.equippedLine = eqId;
+        else if (eq.slot === 'bait') next.equippedBait = eqId;
+        else if (eq.slot === 'hook') next.equippedHook = eqId;
         next = applyXpAndLevel(next, 35);
         return next;
       });
@@ -1051,8 +1510,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       updateSave((prev) => ({
         ...prev,
         equippedWeapon: eq.slot === 'weapon' ? eqId : prev.equippedWeapon,
+        equippedArmor: eq.slot === 'armor' ? eqId : prev.equippedArmor,
         equippedAccessory: eq.slot === 'accessory' ? eqId : prev.equippedAccessory,
         equippedRod: eq.slot === 'rod' ? eqId : prev.equippedRod,
+        equippedLine: eq.slot === 'line' ? eqId : prev.equippedLine,
+        equippedBait: eq.slot === 'bait' ? eqId : prev.equippedBait,
+        equippedHook: eq.slot === 'hook' ? eqId : prev.equippedHook,
       }));
       pushToast(`Equipped ${eq.name}`);
     },
@@ -1071,14 +1534,184 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false;
     }
     soundEngine.playRestoreFanfare();
-    updateSave((prev) => ({
-      ...prev,
-      sparks: prev.sparks - cost,
-      boatLevel: cur + 1,
-    }));
+    updateSave((prev) => {
+      const nextLvl = cur + 1;
+      return {
+        ...prev,
+        sparks: prev.sparks - cost,
+        boatLevel: nextLvl,
+        boatUpgrades: {
+          ...prev.boatUpgrades,
+          speedLevel: Math.max(prev.boatUpgrades.speedLevel, nextLvl),
+          hullLevel: Math.max(prev.boatUpgrades.hullLevel, nextLvl),
+          handlingLevel: Math.max(prev.boatUpgrades.handlingLevel, nextLvl),
+          skin: nextLvl >= 3 ? 'galleon' : nextLvl === 2 ? 'schooner' : 'skiff',
+        },
+      };
+    });
     pushToast(`Boat upgraded to Tier ${cur + 1}! Faster sailing & sturdier hull.`);
     return true;
   }, [pushToast, updateSave]);
+
+  const upgradeBoatPart = useCallback(
+    (part: keyof Omit<BoatUpgradeState, 'skin'>, cost: number, skin?: BoatUpgradeState['skin']): boolean => {
+      const cur = saveRef.current;
+      if (skin) {
+        if (cur.sparks < cost) {
+          pushToast(`Need ${cost} Sparks to repaint vessel.`);
+          return false;
+        }
+        soundEngine.playRestoreFanfare();
+        updateSave((prev) => ({
+          ...prev,
+          sparks: prev.sparks - cost,
+          boatUpgrades: { ...prev.boatUpgrades, skin },
+        }));
+        pushToast(`Vessel refitted as ${skin.toUpperCase()}!`);
+        return true;
+      }
+      const curVal = cur.boatUpgrades[part];
+      if (curVal >= 3) return false;
+      if (cur.sparks < cost) {
+        pushToast(`Need ${cost} Sparks for this boat upgrade.`);
+        return false;
+      }
+      soundEngine.playRestoreFanfare();
+      updateSave((prev) => {
+        const nextUp = { ...prev.boatUpgrades, [part]: curVal + 1 };
+        const avg = Math.round((nextUp.speedLevel + nextUp.hullLevel + nextUp.handlingLevel) / 3);
+        return {
+          ...prev,
+          sparks: prev.sparks - cost,
+          boatLevel: Math.max(prev.boatLevel, avg),
+          boatUpgrades: nextUp,
+        };
+      });
+      pushToast(`Vessel ${part.replace('Level', '')} upgraded to Lv.${curVal + 1}!`);
+      return true;
+    },
+    [pushToast, updateSave]
+  );
+
+  const upgradeAirship = useCallback(
+    (part: 'speedLevel' | 'altitudeLevel' | 'hullColor', cost: number, hullColor?: AirshipState['hullColor']): boolean => {
+      const cur = saveRef.current;
+      if (!cur.airship.unlocked) {
+        pushToast('Restore Brightfall Central Railway & Skyport first!');
+        return false;
+      }
+      if (part === 'hullColor' && hullColor) {
+        if (cur.sparks < cost) {
+          pushToast(`Need ${cost} Sparks to customize Airship hull.`);
+          return false;
+        }
+        soundEngine.playRestoreFanfare();
+        updateSave((prev) => ({
+          ...prev,
+          sparks: prev.sparks - cost,
+          airship: { ...prev.airship, hullColor },
+        }));
+        pushToast(`Skywing Airship repainted ${hullColor}!`);
+        return true;
+      }
+      const val = cur.airship[part] as number;
+      if (val >= 3) return false;
+      if (cur.sparks < cost) {
+        pushToast(`Need ${cost} Sparks for this Airship upgrade.`);
+        return false;
+      }
+      soundEngine.playRestoreFanfare();
+      updateSave((prev) => ({
+        ...prev,
+        sparks: prev.sparks - cost,
+        airship: { ...prev.airship, [part]: val + 1 },
+      }));
+      pushToast(`Airship upgraded to Lv.${val + 1}!`);
+      return true;
+    },
+    [pushToast, updateSave]
+  );
+
+  const buildVillageStructure = useCallback(
+    (buildingId: string): boolean => {
+      const def = VILLAGE_BUILDINGS_CATALOG.find((b) => b.id === buildingId);
+      if (!def) return false;
+      const cur = saveRef.current;
+      if (cur.village.buildings.includes(buildingId)) return true;
+      if (cur.sparks < def.cost) {
+        pushToast(`Need ${def.cost} Sparks to build ${def.name}.`);
+        return false;
+      }
+      soundEngine.playRestoreFanfare();
+      updateSave((prev) => {
+        const nextBuildings = [...prev.village.buildings, buildingId];
+        const nextResidents = prev.village.residents.includes(def.residentName)
+          ? prev.village.residents
+          : [...prev.village.residents, def.residentName];
+        let next: SaveData = {
+          ...prev,
+          sparks: prev.sparks - def.cost,
+          village: {
+            discovered: true,
+            buildings: nextBuildings,
+            residents: nextResidents,
+          },
+          completedRestorations:
+            nextBuildings.length >= 4 && !prev.completedRestorations.includes('rest_newbrook_village')
+              ? [...prev.completedRestorations, 'rest_newbrook_village']
+              : prev.completedRestorations,
+        };
+        if (nextBuildings.length >= 4 && !next.achievements.includes('ach_village_founder')) {
+          next = { ...next, achievements: [...next.achievements, 'ach_village_founder'] };
+        }
+        next = applyXpAndLevel(next, 60);
+        next = syncCollectObjectives(next);
+        return next;
+      });
+      pushToast(`Constructed ${def.name}! ${def.residentName} moved into Newbrook!`);
+      return true;
+    },
+    [pushToast, updateSave]
+  );
+
+  const setCityEvent = useCallback(
+    (event: CityEventType) => {
+      soundEngine.playRestoreFanfare();
+      updateSave((prev) => ({ ...prev, cityEvent: event }));
+      const labelMap: Record<CityEventType, string> = {
+        none: 'Peaceful Season',
+        christmas: 'Christmas in Brightfall',
+        music_festival: 'Harmony Music Festival',
+        food_festival: 'Golden Skillet Food Fair',
+        sports_championship: 'Aetheria Olympic Games',
+        fireworks: 'Starlight Fireworks Gala',
+      };
+      pushToast(`City Event Set: ${labelMap[event]}!`);
+    },
+    [pushToast, updateSave]
+  );
+
+  const inviteNpcToHouse = useCallback(
+    (npcId: string) => {
+      soundEngine.playUiClick();
+      updateSave((prev) => {
+        const invited = prev.house.invitedNpcs.includes(npcId)
+          ? prev.house.invitedNpcs.filter((id) => id !== npcId)
+          : [...prev.house.invitedNpcs, npcId];
+        return { ...prev, house: { ...prev.house, invitedNpcs: invited } };
+      });
+    },
+    [updateSave]
+  );
+
+  const setDifficulty = useCallback(
+    (difficulty: DifficultyMode) => {
+      soundEngine.playUiClick();
+      updateSave((prev) => ({ ...prev, settings: { ...prev.settings, difficulty } }));
+      pushToast(`Difficulty mode set to ${difficulty.toUpperCase()}.`);
+    },
+    [pushToast, updateSave]
+  );
 
   const sleepUntil = useCallback(
     (targetHour: number) => {
@@ -1097,8 +1730,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const upgradeHouse = useCallback((): boolean => {
     const curTier = saveRef.current.house.tier;
-    if (curTier >= 3) return false;
-    const cost = curTier === 1 ? 90 : 180;
+    if (curTier >= 4) return false;
+    const cost = curTier === 1 ? 90 : curTier === 2 ? 180 : 280;
     if (saveRef.current.sparks < cost) {
       pushToast(`Need ${cost} Sparks to expand your Homestead.`);
       return false;
@@ -1211,7 +1844,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         : Object.values(save.quests).find((q) => q.status === 'active')) ?? null;
 
     if (!activeQ) {
-      // Guide new players to Mayor Theo initially
       if (!save.metNpcs.includes('npc_mayor_theo')) {
         const theo = NPCS.find((n) => n.id === 'npc_mayor_theo');
         if (theo) return { label: 'Speak with Mayor Theo', tileX: theo.tileX, tileY: theo.tileY, kind: 'quest' };
@@ -1225,7 +1857,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (nextObj) {
       if (nextObj.type === 'talk') {
         const npc = NPCS.find((n) => n.id === nextObj.targetId);
-        if (npc) return { label: qDef.title, tileX: npc.tileX, tileY: npc.tileY, kind: 'quest' };
+        if (npc && !npc.interiorId) return { label: qDef.title, tileX: npc.tileX, tileY: npc.tileY, kind: 'quest' };
       }
       if (nextObj.type === 'discover') {
         const lm = LANDMARKS.find((l) => l.id === nextObj.targetId);
@@ -1236,8 +1868,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (g) return { label: qDef.title, tileX: g.arenaX, tileY: g.arenaY, kind: 'quest' };
       }
     }
+    if (qDef.waypointTile) {
+      return { label: qDef.title, tileX: qDef.waypointTile.tileX, tileY: qDef.waypointTile.tileY, kind: 'quest' };
+    }
     const giver = NPCS.find((n) => n.id === qDef.giverNpcId);
-    if (giver) return { label: qDef.title, tileX: giver.tileX, tileY: giver.tileY, kind: 'quest' };
+    if (giver && !giver.interiorId) return { label: qDef.title, tileX: giver.tileX, tileY: giver.tileY, kind: 'quest' };
+    const lmRegion = LANDMARKS.find((l) => l.region === qDef.region);
+    if (lmRegion) return { label: qDef.title, tileX: lmRegion.tileX, tileY: lmRegion.tileY, kind: 'quest' };
     return null;
   }, [save.customWaypoint, save.metNpcs, save.quests, save.trackedQuestId]);
 
@@ -1249,7 +1886,23 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!next.discoveredFish.includes(fishId)) {
           next = { ...next, discoveredFish: [...next.discoveredFish, fishId] };
         }
-        next = applyXpAndLevel({ ...next, sparks: next.sparks + Math.max(6, Math.round(points * 0.15)) }, 18);
+        next = {
+          ...next,
+          fishRecords: {
+            ...next.fishRecords,
+            [fishId]: Math.max(next.fishRecords[fishId] ?? 0, points),
+          },
+          sparks: next.sparks + Math.max(8, Math.round(points * 0.18)),
+        };
+        if (next.discoveredFish.length >= 4 && !next.unlockedCompanions.includes('comp_otter')) {
+          next = { ...next, unlockedCompanions: [...next.unlockedCompanions, 'comp_otter'], activeCompanion: 'comp_otter' };
+          pushToast('Companion Unlocked: Splash the Tidefin Otter!');
+        }
+        if (next.discoveredFish.length >= 6 && !next.achievements.includes('ach_master_angler')) {
+          next = { ...next, achievements: [...next.achievements, 'ach_master_angler'] };
+        }
+        next = applyXpAndLevel(next, 22);
+        next = syncCollectObjectives(next);
         return next;
       });
       if (fish) pushToast(`Caught ${fish.name} (${fish.rarity})!`);
@@ -1267,9 +1920,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const recordMiniGameScore = useCallback(
     (miniGameId: MiniGameId, score: number) => {
-      const earnedSparks = Math.max(12, Math.round(score * 0.25));
+      const earnedSparks = Math.max(15, Math.round(score * 0.25));
       updateSave((prev) => {
         const prevBest = prev.miniGameBestScores[miniGameId] ?? 0;
+        const playerLabel = CHARACTERS[prev.activeCharacter]?.name ?? 'Traveler';
+        const existingBoard = prev.miniGameLeaderboards[miniGameId] ?? [];
+        const nextBoard = [...existingBoard, { name: playerLabel, score }]
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 5);
         let next: SaveData = {
           ...prev,
           sparks: prev.sparks + earnedSparks,
@@ -1277,18 +1935,20 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             ...prev.miniGameBestScores,
             [miniGameId]: Math.max(prevBest, score),
           },
+          miniGameLeaderboards: {
+            ...prev.miniGameLeaderboards,
+            [miniGameId]: nextBoard,
+          },
         };
-        if (miniGameId === 'fishing' && score >= 120 && !next.achievements.includes('ach_master_angler')) {
+        if (miniGameId === 'fishing' && score >= 150 && !next.achievements.includes('ach_master_angler')) {
           next = { ...next, achievements: [...next.achievements, 'ach_master_angler'] };
         }
-        if (miniGameId === 'archery' && score >= 150 && !next.achievements.includes('ach_sharp_bolt')) {
-          next = { ...next, achievements: [...next.achievements, 'ach_sharp_bolt'] };
-        }
-        if (miniGameId === 'rhythm' && score >= 200 && !next.achievements.includes('ach_rhythm_star')) {
-          next = { ...next, achievements: [...next.achievements, 'ach_rhythm_star'] };
-        }
         if (
-          (miniGameId === 'football' || miniGameId === 'basketball' || miniGameId === 'bicyclerace') &&
+          (miniGameId === 'football' ||
+            miniGameId === 'basketball' ||
+            miniGameId === 'bicyclerace' ||
+            miniGameId === 'tennis' ||
+            miniGameId === 'swimming') &&
           score >= 80 &&
           !next.achievements.includes('ach_sports_champ')
         ) {
@@ -1301,20 +1961,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (miniGameId === 'cooking' && score >= 70) {
           next = addItemToSave(next, 'meal_berry_tart', 1);
         }
-        const nextQuests = { ...next.quests };
-        Object.keys(nextQuests).forEach((qId) => {
-          const qs = nextQuests[qId];
-          if (qs.status === 'active') {
-            nextQuests[qId] = {
-              ...qs,
-              objectives: qs.objectives.map((o) =>
-                o.type === 'minigame' && o.targetId === miniGameId ? { ...o, current: o.required } : o
-              ),
-            };
-          }
-        });
-        next = { ...next, quests: nextQuests };
         next = applyXpAndLevel(next, 35);
+        next = syncCollectObjectives(next);
         return next;
       });
       pushToast(`Activity Complete! Score: ${score} (+${earnedSparks} Sparks)`);
@@ -1386,6 +2034,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     pushToast,
     selectCharacter,
     setCharacterOutfit,
+    selectCompanion,
+    adoptCompanion,
     startQuest,
     completeQuest,
     completeRestoration,
@@ -1399,6 +2049,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     upgradeEquipment,
     equipItem,
     upgradeBoat,
+    upgradeBoatPart,
+    upgradeAirship,
+    buildVillageStructure,
+    setCityEvent,
+    inviteNpcToHouse,
+    setDifficulty,
     sleepUntil,
     upgradeHouse,
     toggleHouseDecor,
@@ -1414,6 +2070,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     fastTravel,
     updateSettings,
     manualSave,
+    advanceTutorial,
+    skipTutorial,
+    replayTutorial,
+    collectMailboxClue,
     getRegionRestorationPercent,
     getTotalRestorationPercent,
   };

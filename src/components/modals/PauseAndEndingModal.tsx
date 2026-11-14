@@ -16,7 +16,12 @@ export const PauseAndEndingModal: React.FC = () => {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a1016]/80 p-4">
         <div className="w-full max-w-sm rounded-xl bg-[#141c24] border border-[#304252] shadow-2xl p-6 space-y-5 text-center">
-          <h2 className="font-display text-2xl font-bold text-[#f3efe6]">Paused</h2>
+          <div>
+            <h2 className="font-display text-2xl font-bold text-[#f3efe6]">Paused</h2>
+            <p className="text-xs text-[#87d4c8] capitalize mt-1">
+              Difficulty: {save.settings.difficulty} · Brightfall Event: {save.cityEvent.replace('_', ' ')}
+            </p>
+          </div>
           <div className="space-y-2.5">
             <button
               type="button"
@@ -74,7 +79,7 @@ export const PauseAndEndingModal: React.FC = () => {
           </div>
           <h2 className="font-display text-3xl font-bold text-[#f5cc6b]">Aetheria Bounces Back!</h2>
           <p className="text-sm leading-relaxed text-[#dce4ea]">
-            With Aurelius, The Last Remnant purified at the Dawn Sanctum, golden light sweeps back across the Forgotten Kingdom, Frostpeak’s hearths, Sunset Coast’s lighthouse, Whispering Woods’ emerald canopy, Brightfall’s bustling square, and the six outer islands of Aetheria Sea.
+            With Aurelius, The Last Remnant purified at the Dawn Sanctum, golden light sweeps back across Brightfall’s grand avenues, Frostpeak’s hearths, Sunset Coast’s lighthouse, Whispering Woods’ emerald canopy, the six outer islands, Subterranea, and distant horizons.
           </p>
           <p className="text-sm text-[#87d4c8]">
             You proved that a setback does not end the story—what we rebuild together defines what comes next.
@@ -86,7 +91,7 @@ export const PauseAndEndingModal: React.FC = () => {
               <div className="text-[11px] text-[#9aa6b2]">World Restored</div>
             </div>
             <div className="p-3 rounded-lg bg-[#11181f] border border-[#2c3b4a]">
-              <div className="text-xl font-bold text-[#87d4c8]">{save.defeatedGuardians.length}/10</div>
+              <div className="text-xl font-bold text-[#87d4c8]">{save.defeatedGuardians.length}/12</div>
               <div className="text-[11px] text-[#9aa6b2]">Guardians Purified</div>
             </div>
             <div className="p-3 rounded-lg bg-[#11181f] border border-[#2c3b4a]">

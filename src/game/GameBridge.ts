@@ -2,8 +2,11 @@ import {
   FoodEffect,
   GuardianId,
   MiniGameId,
+  MonsterSpeciesId,
   PlayerHudSnapshot,
+  RegionId,
   SaveData,
+  TutorialStepId,
   WeatherType,
 } from '../types/game';
 
@@ -16,16 +19,26 @@ export interface SceneCallbacks {
   onOpenShop: (shopId: string) => void;
   onOpenEquipment: () => void;
   onOpenHouse: () => void;
+  onOpenVillage: () => void;
+  onOpenAirship: () => void;
+  onOpenEvents: () => void;
+  onOpenHelp?: () => void;
+  onInspectMailbox?: () => void;
   onCollectItem: (collectibleId: string, itemId: string, quantity: number) => void;
   onOpenChest: (chestId: string, sparks: number, items: { id: string; quantity: number }[]) => void;
   onDiscoverLandmark: (landmarkId: string) => void;
   onDiscoverSecret: (secretId: string, message: string, sparks: number) => void;
   onSolvePuzzle: (puzzleId: string, message: string, sparks: number) => void;
+  onPhotoCaptured: (subjectId: string, title: string, region: RegionId) => void;
+  onMovingIslandFound: () => void;
   onPlayerDamaged: (amount: number) => void;
-  onDefeatEnemy: (sparks: number, xp: number) => void;
+  onMonsterSeen: (speciesId: MonsterSpeciesId) => void;
+  onDefeatEnemy: (sparks: number, xp: number, speciesId?: MonsterSpeciesId) => void;
   onGuardianPurified: (guardianId: GuardianId) => void;
+  onTutorialEvent: (step: TutorialStepId) => void;
   onPlayerMoved: (x: number, y: number, interiorId: string | null) => void;
   onBoatMoved: (x: number, y: number) => void;
+  onAirshipMoved: (x: number, y: number) => void;
   onTimeChanged: (hour: number) => void;
   onWeatherChanged: (weather: WeatherType) => void;
   onHungerChanged: (hunger: number) => void;
@@ -43,6 +56,9 @@ class GameBridge {
     enterInteriorById: (interiorId: string | null, tx?: number, ty?: number) => void;
     boardBoat: () => void;
     disembarkBoat: () => void;
+    boardAirship: () => void;
+    landAirship: () => void;
+    takePhoto: () => void;
     setTimeOfDay: (hour: number) => void;
     setWeather: (weather: WeatherType) => void;
     applyFoodEffect: (effect: FoodEffect) => void;
@@ -77,6 +93,10 @@ class GameBridge {
     this.sceneRef?.fastTravelTo(tileX, tileY);
   }
 
+  public enterZone(interiorId: string | null, tx?: number, ty?: number) {
+    this.sceneRef?.enterInteriorById(interiorId, tx, ty);
+  }
+
   public startGuardianEncounter(guardianId: GuardianId) {
     this.sceneRef?.startGuardianEncounter(guardianId);
   }
@@ -91,6 +111,18 @@ class GameBridge {
 
   public disembarkBoat() {
     this.sceneRef?.disembarkBoat();
+  }
+
+  public boardAirship() {
+    this.sceneRef?.boardAirship();
+  }
+
+  public landAirship() {
+    this.sceneRef?.landAirship();
+  }
+
+  public takePhoto() {
+    this.sceneRef?.takePhoto();
   }
 
   public setTimeOfDay(hour: number) {

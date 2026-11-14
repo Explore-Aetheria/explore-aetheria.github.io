@@ -1,24 +1,41 @@
-import { DialogueNode, NpcDef, SaveData } from '../types/game';
-import { MAIN_OFFSET_X as OX, MAIN_OFFSET_Y as OY } from './progression';
+import { ISLAND_CAMPAIGN_QUESTS, getIslandCampaignCompletedCount } from './islandCampaigns';
+import { GUARDIANS, MAIN_OFFSET_X as OX, MAIN_OFFSET_Y as OY } from './progression';
+import { QUESTS } from './quests';
+import { DialogueChoice, DialogueNode, NpcDef, RegionId, SaveData } from '../types/game';
 
 export const NPCS: NpcDef[] = [
-  // Original Mainland NPCs (offset cleanly onto Main Island)
+  // Brightfall Metropolis & Mainland NPCs (aligned to OX=120, OY=85)
   {
     id: 'npc_mayor_theo',
     name: 'Mayor Theo',
-    role: 'Mayor of Brightfall',
+    role: 'Mayor of Brightfall City',
     region: 'brightfall',
-    tileX: OX + 54,
+    tileX: OX + 56,
     tileY: OY + 54,
     patrolRadius: 3,
     palette: { hair: '#b8b3a8', outfit: '#354f6b', trim: '#e0a943', skin: '#ecc4a0' },
     voicePitch: 290,
     questMarkerIds: ['q_welcome_brightfall'],
+    scheduleNote: 'Brightfall Fountain Plaza all day & lantern evenings',
+  },
+  {
+    id: 'npc_midnight_peddler',
+    name: 'Curio Peddler Nyx',
+    role: 'Moonlight Lantern & Chart Merchant',
+    region: 'brightfall',
+    tileX: OX + 52,
+    tileY: OY + 56,
+    patrolRadius: 1,
+    palette: { hair: '#2e2246', outfit: '#2b2042', trim: '#c792ea', skin: '#ead0d8' },
+    voicePitch: 435,
+    questMarkerIds: ['q_night_watch'],
+    activeHours: [19, 5],
+    scheduleNote: 'Night Market Cart in Brightfall Plaza (19:00–05:00)',
   },
   {
     id: 'npc_builder_mae',
     name: 'Builder Mae',
-    role: 'Town Carpenter & Restorer',
+    role: 'Chief Restorer & Village Architect',
     region: 'brightfall',
     interiorId: 'int_restoration_hall',
     tileX: 10,
@@ -26,6 +43,8 @@ export const NPCS: NpcDef[] = [
     patrolRadius: 2,
     palette: { hair: '#5e3528', outfit: '#b85c38', trim: '#f0c475', skin: '#d89b72' },
     voicePitch: 410,
+    questMarkerIds: ['q_newbrook_founder'],
+    scheduleNote: 'Indoors at Restoration Hall (always open)',
   },
   {
     id: 'npc_chef_clara',
@@ -38,18 +57,20 @@ export const NPCS: NpcDef[] = [
     palette: { hair: '#3b2c27', outfit: '#e8e2d5', trim: '#c95d43', skin: '#f0c5a4' },
     voicePitch: 460,
     questMarkerIds: ['q_cafe_beans'],
+    scheduleNote: 'Tends Hearth & Crumb Café terrace from sunrise to evening',
   },
   {
     id: 'npc_merchant_milo',
     name: 'Merchant Milo',
-    role: 'Brightfall General Goods',
+    role: 'Brightfall Market & Mall Director',
     region: 'brightfall',
-    tileX: OX + 62,
+    tileX: OX + 64,
     tileY: OY + 56,
     patrolRadius: 2,
     palette: { hair: '#784b2a', outfit: '#436e56', trim: '#e4b363', skin: '#e8ba93' },
     voicePitch: 360,
     questMarkerIds: ['q_market_gears'],
+    scheduleNote: 'Brightfall Market Promenade (07:00–22:00)',
   },
   {
     id: 'npc_tailor_june',
@@ -80,13 +101,14 @@ export const NPCS: NpcDef[] = [
   {
     id: 'npc_bard_oliver',
     name: 'Oliver the Bard',
-    role: 'Festival Musician',
+    role: 'Festival & City Events Director',
     region: 'brightfall',
-    tileX: OX + 50,
+    tileX: OX + 52,
     tileY: OY + 61,
     patrolRadius: 3,
     palette: { hair: '#c48f45', outfit: '#634375', trim: '#ebd083', skin: '#f0c9a8' },
     voicePitch: 450,
+    questMarkerIds: ['q_amusement_revival'],
   },
   {
     id: 'npc_neighbor_tessa',
@@ -100,7 +122,6 @@ export const NPCS: NpcDef[] = [
     voicePitch: 480,
     requiresRestorationId: 'rest_brightfall_cafe',
   },
-  // Expanded Main Island NPCs
   {
     id: 'npc_grocer_hana',
     name: 'Grocer Hana',
@@ -112,7 +133,6 @@ export const NPCS: NpcDef[] = [
     patrolRadius: 1,
     palette: { hair: '#24303c', outfit: '#3b7d54', trim: '#f2ead8', skin: '#eec5a4' },
     voicePitch: 470,
-    activeHours: [6, 22],
   },
   {
     id: 'npc_chef_marcus',
@@ -125,7 +145,6 @@ export const NPCS: NpcDef[] = [
     patrolRadius: 1,
     palette: { hair: '#3b241c', outfit: '#e8e2d5', trim: '#b84b3e', skin: '#c78c68' },
     voicePitch: 320,
-    activeHours: [7, 23],
   },
   {
     id: 'npc_smith_garrick',
@@ -142,9 +161,9 @@ export const NPCS: NpcDef[] = [
   {
     id: 'npc_coach_leo',
     name: 'Coach Leo',
-    role: 'Brightfall Sports Director',
+    role: 'Olympic Sports Park Director',
     region: 'brightfall',
-    tileX: OX + 66,
+    tileX: OX + 70,
     tileY: OY + 66,
     patrolRadius: 2,
     palette: { hair: '#2b2b2b', outfit: '#2f6da3', trim: '#f5cc6b', skin: '#d4966e' },
@@ -152,12 +171,148 @@ export const NPCS: NpcDef[] = [
     questMarkerIds: ['q_island_sports'],
   },
   {
+    id: 'npc_doctor_claire',
+    name: 'Dr. Claire',
+    role: 'Brightfall Hospital Chief & Naturalist',
+    region: 'brightfall',
+    interiorId: 'int_hospital',
+    tileX: 9,
+    tileY: 6,
+    patrolRadius: 1,
+    palette: { hair: '#6b3e2e', outfit: '#eef5f8', trim: '#e05a47', skin: '#f2cba8' },
+    voicePitch: 465,
+    questMarkerIds: ['q_wildlife_photo'],
+  },
+  {
+    id: 'npc_librarian_elena',
+    name: 'Librarian Elena',
+    role: 'Grand Library Archivist',
+    region: 'brightfall',
+    interiorId: 'int_library',
+    tileX: 9,
+    tileY: 6,
+    patrolRadius: 1,
+    palette: { hair: '#3c2e4f', outfit: '#5a4378', trim: '#f5cc6b', skin: '#ecc4a0' },
+    voicePitch: 455,
+    questMarkerIds: ['q_moving_island_clue'],
+  },
+  {
+    id: 'npc_engineer_vera',
+    name: 'Engineer Vera',
+    role: 'Grand Skyport & Rail Captain',
+    region: 'brightfall',
+    tileX: OX + 76,
+    tileY: OY + 39,
+    patrolRadius: 2,
+    palette: { hair: '#944a2a', outfit: '#284c6b', trim: '#f5cc6b', skin: '#e8ba93' },
+    voicePitch: 425,
+    questMarkerIds: ['q_airship_wings'],
+    scheduleNote: 'Inspects Skyport Runway beacons & airship hangar deck',
+  },
+  {
+    id: 'npc_station_master',
+    name: 'Conductor Bram',
+    role: 'Brightfall Central Station',
+    region: 'brightfall',
+    tileX: OX + 64,
+    tileY: OY + 40,
+    patrolRadius: 2,
+    palette: { hair: '#8f8c84', outfit: '#2c3d55', trim: '#e0a943', skin: '#e2b690' },
+    voicePitch: 295,
+    scheduleNote: 'Dispatches the Brightfall Express along the northern platform',
+  },
+  {
+    id: 'npc_officer_blake',
+    name: 'Officer Blake',
+    role: 'Brightfall Civic Safety & Fire Chief',
+    region: 'brightfall',
+    tileX: OX + 40,
+    tileY: OY + 44,
+    patrolRadius: 3,
+    palette: { hair: '#2a2c38', outfit: '#274469', trim: '#e6c565', skin: '#d89b72' },
+    voicePitch: 300,
+  },
+  {
+    id: 'npc_arcade_host',
+    name: 'Rex',
+    role: 'Starlight Cinema & Arcade Host',
+    region: 'brightfall',
+    interiorId: 'int_arcade',
+    tileX: 9,
+    tileY: 6,
+    patrolRadius: 1,
+    palette: { hair: '#4a2870', outfit: '#75386e', trim: '#7be3f5', skin: '#e8ba93' },
+    voicePitch: 390,
+  },
+  {
+    id: 'npc_tackle_master',
+    name: 'Reef',
+    role: 'Grand Marina Tackle Outfitter',
+    region: 'sunset_coast',
+    interiorId: 'int_tackle_shop',
+    tileX: 9,
+    tileY: 6,
+    patrolRadius: 1,
+    palette: { hair: '#2f6c78', outfit: '#1f4e5c', trim: '#ffd466', skin: '#d9a079' },
+    voicePitch: 350,
+  },
+  {
+    id: 'npc_carnival_host',
+    name: 'Pippa Star',
+    role: 'Starfall Amusement Park Ringmaster',
+    region: 'amusement_park',
+    tileX: OX + 98,
+    tileY: OY + 66,
+    patrolRadius: 2,
+    palette: { hair: '#c44d7a', outfit: '#6e326b', trim: '#ffd466', skin: '#f2c9a0' },
+    voicePitch: 490,
+    questMarkerIds: ['q_amusement_revival'],
+  },
+  {
+    id: 'npc_newbrook_foreman',
+    name: 'Foreman Alden',
+    role: 'Newbrook Valley Planner',
+    region: 'newbrook',
+    tileX: OX + 27,
+    tileY: OY + 26,
+    patrolRadius: 2,
+    palette: { hair: '#6b472d', outfit: '#4e6e42', trim: '#e4b363', skin: '#e6b895' },
+    voicePitch: 315,
+    questMarkerIds: ['q_newbrook_founder'],
+  },
+  {
+    id: 'npc_delver_torin',
+    name: 'Torin the Delver',
+    role: 'Subterranean Warden',
+    region: 'underground',
+    interiorId: 'int_underground_city',
+    tileX: 14,
+    tileY: 11,
+    patrolRadius: 2,
+    palette: { hair: '#c9c4b9', outfit: '#385866', trim: '#87d4c8', skin: '#d8ad89' },
+    voicePitch: 275,
+    questMarkerIds: ['q_underground_depths'],
+  },
+  {
+    id: 'npc_scholar_lyra_alt',
+    name: 'Chronicle Vespera',
+    role: 'Alternate Rift Guide',
+    region: 'dim_mirror',
+    interiorId: 'dim_mirror',
+    tileX: 16,
+    tileY: 12,
+    patrolRadius: 2,
+    palette: { hair: '#a6c8ff', outfit: '#3a2b59', trim: '#ff96e3', skin: '#ebd8f2' },
+    voicePitch: 430,
+    questMarkerIds: ['q_alternate_rifts'],
+  },
+  {
     id: 'npc_farmer_pippa',
     name: 'Farmer Pippa',
     role: 'Brightfall Orchard Keeper',
     region: 'brightfall',
-    tileX: OX + 69,
-    tileY: OY + 51,
+    tileX: OX + 72,
+    tileY: OY + 49,
     patrolRadius: 3,
     palette: { hair: '#c4713b', outfit: '#5a8244', trim: '#f2d08a', skin: '#f2c9a0' },
     voicePitch: 485,
@@ -168,7 +323,7 @@ export const NPCS: NpcDef[] = [
     role: 'Harbour Master & Boatwright',
     region: 'sunset_coast',
     tileX: OX + 64,
-    tileY: OY + 85,
+    tileY: OY + 88,
     patrolRadius: 2,
     palette: { hair: '#7c8894', outfit: '#1e4a66', trim: '#f0c475', skin: '#dfa782' },
     voicePitch: 295,
@@ -176,10 +331,10 @@ export const NPCS: NpcDef[] = [
   {
     id: 'npc_townsperson_eli',
     name: 'Eli',
-    role: 'Neighborhood Jogger',
+    role: 'Neighborhood Runner',
     region: 'brightfall',
     tileX: OX + 46,
-    tileY: OY + 58,
+    tileY: OY + 60,
     patrolRadius: 5,
     palette: { hair: '#3d2c22', outfit: '#d96b43', trim: '#f2eee4', skin: '#e8b994' },
     voicePitch: 380,
@@ -213,8 +368,8 @@ export const NPCS: NpcDef[] = [
     name: 'Captain Finn',
     role: 'Driftwood Harbor Master',
     region: 'sunset_coast',
-    tileX: OX + 64,
-    tileY: OY + 82,
+    tileX: OX + 68,
+    tileY: OY + 86,
     patrolRadius: 2,
     palette: { hair: '#c9c4b9', outfit: '#284c6b', trim: '#e6b95c', skin: '#d9a079' },
     voicePitch: 280,
@@ -225,8 +380,8 @@ export const NPCS: NpcDef[] = [
     name: 'Angler Marina',
     role: 'Pier Champion',
     region: 'sunset_coast',
-    tileX: OX + 70,
-    tileY: OY + 85,
+    tileX: OX + 72,
+    tileY: OY + 88,
     patrolRadius: 2,
     palette: { hair: '#2c5c6e', outfit: '#d97a4a', trim: '#f2e8d5', skin: '#e8b994' },
     voicePitch: 445,
@@ -237,7 +392,7 @@ export const NPCS: NpcDef[] = [
     name: 'Warden Ingrid',
     role: 'Hearthstone Guide',
     region: 'frostpeak',
-    tileX: OX + 84,
+    tileX: OX + 88,
     tileY: OY + 32,
     patrolRadius: 2,
     palette: { hair: '#d49a57', outfit: '#3d5a73', trim: '#ebe8e1', skin: '#f2ccb0' },
@@ -249,7 +404,7 @@ export const NPCS: NpcDef[] = [
     name: 'Tobi',
     role: 'Ice Trail Runner',
     region: 'frostpeak',
-    tileX: OX + 79,
+    tileX: OX + 83,
     tileY: OY + 28,
     patrolRadius: 3,
     palette: { hair: '#3d2c24', outfit: '#b84c44', trim: '#a6dcff', skin: '#eec5a4' },
@@ -261,56 +416,54 @@ export const NPCS: NpcDef[] = [
     role: 'Scholar of the Dawn',
     region: 'forgotten_kingdom',
     tileX: OX + 44,
-    tileY: OY + 22,
+    tileY: OY + 23,
     patrolRadius: 2,
     palette: { hair: '#e8e2d8', outfit: '#443563', trim: '#f0c469', skin: '#e0b38f' },
     voicePitch: 310,
     questMarkerIds: ['q_forgotten_kingdom', 'q_rune_scholar'],
   },
 
-  // 6 NEW ISLANDS NPCS
+  // 6 MASSIVE ADVENTURE ISLANDS NPCS (Aligned to 360x270 organic islands!)
   {
     id: 'npc_freya_frost',
-    name: 'Freya',
-    role: 'Frosthaven Mayor',
+    name: 'Mayor Freya',
+    role: 'Frosthaven Mayor (Frozen Kingdom)',
     region: 'frozen_kingdom',
-    tileX: 204,
-    tileY: 32,
+    tileX: 286,
+    tileY: 60,
     patrolRadius: 2,
     palette: { hair: '#e8d7a5', outfit: '#365e85', trim: '#eef7fc', skin: '#f5d2b8' },
     voicePitch: 440,
-    questMarkerIds: ['q_frozen_kingdom'],
   },
   {
     id: 'npc_icecarver_bjorn',
-    name: 'Bjorn',
-    role: 'Fjord Angler',
+    name: 'Fjord Angler Bjorn',
+    role: 'Frozen Kingdom Harvester',
     region: 'frozen_kingdom',
-    tileX: 198,
-    tileY: 28,
+    tileX: 278,
+    tileY: 56,
     patrolRadius: 2,
     palette: { hair: '#8c5a37', outfit: '#543e33', trim: '#a6e3ff', skin: '#ecc3a4' },
     voicePitch: 290,
   },
   {
     id: 'npc_kora_jungle',
-    name: 'Kora',
-    role: 'Canopy Ranger',
+    name: 'Ranger Kora',
+    role: 'Wild Jungle Canopy Ranger',
     region: 'wild_jungle',
-    tileX: 34,
-    tileY: 142,
+    tileX: 74,
+    tileY: 224,
     patrolRadius: 2,
     palette: { hair: '#2b241f', outfit: '#387544', trim: '#f09b4c', skin: '#c48660' },
     voicePitch: 430,
-    questMarkerIds: ['q_wild_jungle'],
   },
   {
     id: 'npc_botanist_tali',
-    name: 'Tali',
-    role: 'Orchid Researcher',
+    name: 'Botanist Tali',
+    role: 'Wild Jungle Orchid Researcher',
     region: 'wild_jungle',
-    tileX: 28,
-    tileY: 148,
+    tileX: 64,
+    tileY: 228,
     patrolRadius: 3,
     palette: { hair: '#593326', outfit: '#7d5a3c', trim: '#ff82a9', skin: '#d99e75' },
     voicePitch: 475,
@@ -318,61 +471,57 @@ export const NPCS: NpcDef[] = [
   {
     id: 'npc_flint_volcanic',
     name: 'Master Flint',
-    role: 'Emberforge Foreman',
+    role: 'Emberforge Foreman (Volcanic Island)',
     region: 'volcanic_island',
-    tileX: 196,
-    tileY: 108,
+    tileX: 284,
+    tileY: 152,
     patrolRadius: 2,
     palette: { hair: '#c9c4b9', outfit: '#6e2e24', trim: '#ff884d', skin: '#d19873' },
     voicePitch: 265,
-    questMarkerIds: ['q_volcanic_island'],
   },
   {
     id: 'npc_miner_cinder',
-    name: 'Cinder',
-    role: 'Ore Prospector',
+    name: 'Prospector Cinder',
+    role: 'Volcanic Ore Scout',
     region: 'volcanic_island',
-    tileX: 204,
-    tileY: 112,
+    tileX: 294,
+    tileY: 148,
     patrolRadius: 2,
     palette: { hair: '#382a27', outfit: '#4d4854', trim: '#f5b042', skin: '#e6b894' },
     voicePitch: 365,
   },
   {
-    id: 'npc_caelum_sky',
-    name: 'Caelum',
-    role: 'Cloudspire Keeper',
+    id: 'npc_zephyr_sky',
+    name: 'Wind-Keeper Zephyr',
+    role: 'Cloudspire Keeper (Sky Island)',
     region: 'sky_island',
-    tileX: 118,
-    tileY: 25,
+    tileX: 180,
+    tileY: 50,
     patrolRadius: 2,
     palette: { hair: '#f0ece1', outfit: '#3a6f94', trim: '#f5d47a', skin: '#f0c8a8' },
     voicePitch: 390,
-    questMarkerIds: ['q_sky_island'],
   },
   {
-    id: 'npc_edgar_haunted',
-    name: 'Caretaker Edgar',
-    role: 'Mistvale Historian',
+    id: 'npc_ghost_bramwell',
+    name: 'Chronicler Bramwell',
+    role: 'Mistvale Historian (Haunted Island)',
     region: 'haunted_island',
-    tileX: 34,
-    tileY: 88,
+    tileX: 60,
+    tileY: 150,
     patrolRadius: 2,
     palette: { hair: '#a8a2b3', outfit: '#392c4f', trim: '#c792ea', skin: '#e0d6e8' },
     voicePitch: 295,
-    questMarkerIds: ['q_haunted_island'],
   },
   {
-    id: 'npc_seraphina_lost',
-    name: 'Queen Seraphina',
-    role: 'Memory of the Lost Capital',
+    id: 'npc_vaelen_lost',
+    name: 'Sentinel Vaelen',
+    role: 'Guardian of the Lost Capital',
     region: 'lost_kingdom',
-    tileX: 34,
-    tileY: 30,
+    tileX: 58,
+    tileY: 58,
     patrolRadius: 2,
     palette: { hair: '#f5d47a', outfit: '#3d2a5c', trim: '#ffd466', skin: '#f0d8c8' },
-    voicePitch: 420,
-    questMarkerIds: ['q_lost_kingdom'],
+    voicePitch: 320,
   },
 ];
 
@@ -380,13 +529,134 @@ function itemCount(save: SaveData, itemId: string): number {
   return save.inventory.find((i) => i.id === itemId)?.quantity ?? 0;
 }
 
+function getReadyCampaignQuests(save: SaveData, region: RegionId) {
+  return ISLAND_CAMPAIGN_QUESTS.filter((q) => {
+    if (q.region !== region) return false;
+    const state = save.quests[q.id];
+    if (!state || state.status !== 'active') return false;
+    return state.objectives.every((o) => o.current >= o.required);
+  });
+}
+
+function getNextCampaignQuest(save: SaveData, region: RegionId) {
+  return ISLAND_CAMPAIGN_QUESTS.find((q) => {
+    if (q.region !== region) return false;
+    if (save.quests[q.id]) return false;
+    if (!q.prerequisiteQuestId) return true;
+    return save.quests[q.prerequisiteQuestId]?.status === 'completed';
+  });
+}
+
+function appendCampaignChoices(save: SaveData, region: RegionId, choices: DialogueChoice[]) {
+  const ready = getReadyCampaignQuests(save, region);
+  for (const rq of ready.slice(0, 2)) {
+    choices.push({
+      label: `Claim Reward: ${rq.title}`,
+      action: { type: 'COMPLETE_QUEST', questId: rq.id },
+    });
+  }
+  const next = getNextCampaignQuest(save, region);
+  if (next) {
+    choices.push({
+      label: `Start Chapter ${next.campaignOrder}: ${next.title}`,
+      nextNodeId: 'campaign_started',
+      action: { type: 'START_QUEST', questId: next.id },
+    });
+  }
+}
+
+export function getFriendshipTier(points: number): string {
+  if (points >= 8) return 'Trusted Ally';
+  if (points >= 4) return 'Friend';
+  if (points >= 2) return 'Acquaintance';
+  return 'New Face';
+}
+
+function getTimeGreeting(hour: number): string {
+  if (hour >= 5 && hour < 7) return 'First light breaks softly over Aetheria.';
+  if (hour >= 7 && hour < 9) return 'Fresh morning air settles across the plazas.';
+  if (hour >= 9 && hour < 12) return 'Bright morning sunshine fills the streets.';
+  if (hour >= 12 && hour < 17) return 'Good afternoon, traveler!';
+  if (hour >= 17 && hour < 19) return 'The golden evening breeze is rolling in.';
+  if (hour >= 19 && hour < 21) return 'Sunset lanterns are flickering awake along the avenues.';
+  if (hour >= 21 && hour < 24) return 'Quiet starlight watches over the harbor tonight.';
+  return 'The midnight watch is peaceful under the moon.';
+}
+
 export function buildNpcDialogue(npcId: string, save: SaveData): Record<string, DialogueNode> {
+  const nodes = buildNpcDialogueCore(npcId, save);
+  const hour = Math.floor(save.timeOfDay);
+  const friendship = save.npcFriendship?.[npcId] ?? 0;
+  const tier = getFriendshipTier(friendship);
+  const npcDef = NPCS.find((n) => n.id === npcId);
+  if (nodes.root) {
+    const timeNote = hour >= 19 || hour < 7 ? `${getTimeGreeting(hour)} ` : '';
+    nodes.root = {
+      ...nodes.root,
+      speakerRole: `${nodes.root.speakerRole} · ${tier}${npcDef?.scheduleNote ? '' : ''}`,
+      text:
+        npcId !== 'npc_mayor_theo' && timeNote && !nodes.root.text.startsWith(timeNote)
+          ? `${timeNote}${nodes.root.text}`
+          : nodes.root.text,
+    };
+  }
+  return nodes;
+}
+
+function buildNpcDialogueCore(npcId: string, save: SaveData): Record<string, DialogueNode> {
   const charId = save.activeCharacter;
   const restoredCount = save.completedRestorations.length;
   const hour = Math.floor(save.timeOfDay);
-  const isNight = hour >= 20 || hour < 6;
+  const isNight = hour >= 19 || hour < 6;
 
   switch (npcId) {
+    case 'npc_midnight_peddler': {
+      const nq = save.quests['q_night_watch'];
+      const hasEel = itemCount(save, 'fish_lantern_eel') > 0;
+      const choices: DialogueChoice[] = [
+        { label: 'Browse Night Market Lanterns & Charts', action: { type: 'OPEN_SHOP', shopId: 'night_market' } },
+      ];
+      if (!nq) {
+        choices.push({
+          label: 'Accept Night Quest: Lanterns of the Midnight Coast',
+          nextNodeId: 'nyx_quest',
+          action: { type: 'START_QUEST', questId: 'q_night_watch' },
+        });
+      } else if (nq.status === 'active' && (hasEel || nq.objectives.every((o) => o.current >= o.required))) {
+        choices.push({
+          label: 'Turn in Moonlight Lantern Eel Quest!',
+          nextNodeId: 'nyx_done',
+          action: { type: 'COMPLETE_QUEST', questId: 'q_night_watch' },
+        });
+      }
+      choices.push({ label: 'Step back into the starlight', action: { type: 'CLOSE' } });
+      return {
+        root: {
+          id: 'root',
+          speaker: 'Curio Peddler Nyx',
+          speakerRole: 'Midnight Curio Merchant',
+          portraitKey: 'npc_midnight_peddler',
+          text: 'Only between dusk and dawn do Aetheria’s quietest treasures surface. Need a Driftspire chart fragment, glowing crystal lamp, or nocturnal angling tip?',
+          choices,
+        },
+        nyx_quest: {
+          id: 'nyx_quest',
+          speaker: 'Curio Peddler Nyx',
+          speakerRole: 'Midnight Curio Merchant',
+          portraitKey: 'npc_midnight_peddler',
+          text: 'Moonlight Lantern Eels glide near Driftwood Marina and Haunted Lagoon from Evening through Midnight. Cast out once the sky turns indigo!',
+          choices: [{ label: 'To the coast!', action: { type: 'CLOSE' } }],
+        },
+        nyx_done: {
+          id: 'nyx_done',
+          speaker: 'Curio Peddler Nyx',
+          speakerRole: 'Midnight Curio Merchant',
+          portraitKey: 'npc_midnight_peddler',
+          text: 'What a shimmer! Take this Mistvale Wisp Lantern and Sparks—it’ll keep dark trails kind on every midnight voyage.',
+          choices: [{ label: 'Safe travels, Nyx.', action: { type: 'CLOSE' } }],
+        },
+      };
+    }
     case 'npc_mayor_theo': {
       const q = save.quests['q_welcome_brightfall'];
       const cafeDone = save.completedRestorations.includes('rest_brightfall_cafe');
@@ -396,16 +666,16 @@ export function buildNpcDialogue(npcId: string, save: SaveData): Record<string, 
         save.completedRestorations.includes('rest_brightfall_garden');
 
       let greeting =
-        'Welcome to Brightfall Town, traveler. Before the Great Fall, lanterns hung from every eavesdrop and boats sailed from Driftwood Harbour to six neighboring islands. Now we are rebuilding—one porch, one neighbor at a time.';
+        'Welcome to Brightfall City! Once our metropolis glowed with bustling avenues, holiday trees, trains, sports stadiums, and six neighbor islands across Aetheria Sea. Let’s bounce back—block by block!';
       if (allBrightfallDone) {
         greeting =
-          'Look around you! The Fresh Mart, Bistro, Sports Park, and Market are humming—and folks are sailing out to the six surrounding islands again. You gave Aetheria its bounce back!';
+          'Look at Brightfall now! Crosswalks, cafés, shops, trains, Starfall Carnival, and Grand Skyport are thriving again—and folks are sailing to all six islands!';
       } else if (cafeDone) {
         greeting =
-          'Smelling fresh pastries from Hearth & Crumb lifted half the town’s spirits! Remember, your personal Homestead is just west of the square, and Dockmaster Vane can launch a boat from Driftwood Harbour.';
+          'Fresh pastries at Hearth & Crumb brought smiles back to the avenue! Check your expanded Homestead west of the square, visit Newbrook Valley NW to build a new village, or sail south from Grand Marina.';
       }
 
-      const choices: DialogueNode['choices'] = [];
+      const choices: DialogueChoice[] = [];
       if (!q) {
         choices.push({
           label: 'I want to help Brightfall recover. Where do I start?',
@@ -419,59 +689,444 @@ export function buildNpcDialogue(npcId: string, save: SaveData): Record<string, 
           action: { type: 'COMPLETE_QUEST', questId: 'q_welcome_brightfall' },
         });
       }
-      choices.push({ label: 'Tell me about the surrounding islands.', nextNodeId: 'theo_regions' });
+      choices.push({ label: 'Manage Brightfall City Festivals & Events', action: { type: 'OPEN_EVENTS' } });
+      choices.push({ label: 'Tell me about Aetheria’s islands & secrets.', nextNodeId: 'theo_regions' });
       choices.push({
-        label: 'Rest by the square fountain (Full Heal).',
+        label: 'Rest by the fountain (Full Heal).',
         nextNodeId: 'theo_heal',
         action: { type: 'HEAL_PLAYER' },
       });
-      choices.push({ label: 'See you around the square.', action: { type: 'CLOSE' } });
+      choices.push({ label: 'See you around the avenue.', action: { type: 'CLOSE' } });
 
       return {
         root: {
           id: 'root',
           speaker: 'Mayor Theo',
-          speakerRole: 'Mayor of Brightfall',
+          speakerRole: 'Mayor of Brightfall City',
           portraitKey: 'npc_mayor_theo',
-          text: isNight ? `Good evening! Notice how the town lanterns glow at night? ${greeting}` : greeting,
+          text: isNight ? `Look how the streetlights & holiday trees shimmer tonight! ${greeting}` : greeting,
           characterQuips: {
-            explorer: 'With Rowan’s keen eye for old trails, you’ll have our roads mapped in no time.',
-            inventor: 'Pip! Those brass tools of yours might be exactly what our market stalls need.',
-            mystic: 'Lyra, your calm presence steadies the whole plaza.',
+            explorer: 'Rowan, with your explorer instinct, Brightfall’s avenues and six outer islands are calling!',
+            inventor: 'Pip! Those brass tools can fix our railway and Grand Skyport in record time.',
+            mystic: 'Lyra, your presence calms the whole square.',
           },
           choices,
         },
         theo_start: {
           id: 'theo_start',
           speaker: 'Mayor Theo',
-          speakerRole: 'Mayor of Brightfall',
+          speakerRole: 'Mayor of Brightfall City',
           portraitKey: 'npc_mayor_theo',
-          text: 'First, help Chef Clara reopen the Café, or check your personal Homestead west of the square! When ready for the high seas, head south to Driftwood Harbour.',
+          text: 'Help Chef Clara reopen Hearth & Crumb Café, explore Brightfall’s Mall, Hospital, Library & Olympic Sports Park, or take a boat south from Grand Marina!',
           choices: [{ label: 'On it, Mayor!', action: { type: 'CLOSE' } }],
         },
         theo_cafe_complete: {
           id: 'theo_cafe_complete',
           speaker: 'Mayor Theo',
-          speakerRole: 'Mayor of Brightfall',
+          speakerRole: 'Mayor of Brightfall City',
           portraitKey: 'npc_mayor_theo',
-          text: 'Incredible work! Please take my Cartographer’s Compass. A setback never writes the final chapter—what you build next does.',
+          text: 'Incredible work! Please accept my Cartographer’s Compass. Every setback in Aetheria is just chapter one of the bounce back.',
           choices: [{ label: 'Thank you, Mayor Theo.', action: { type: 'CLOSE' } }],
         },
         theo_regions: {
           id: 'theo_regions',
           speaker: 'Mayor Theo',
-          speakerRole: 'Mayor of Brightfall',
+          speakerRole: 'Mayor of Brightfall City',
           portraitKey: 'npc_mayor_theo',
-          text: 'Beyond our Main Island lie six realms across Aetheria Sea: Frozen Kingdom (NE), Volcanic Island (E), Wild Jungle (SW), Haunted Island (W), Sky Island (N), and the Lost Kingdom (NW).',
+          text: 'Sail to six huge surrounding islands—Frozen Kingdom (NE), Volcanic Island (E), Wild Jungle (SW), Haunted Island (W), Sky Island (N), Lost Kingdom (NW)—plus Newbrook Village, Starfall Park, Subterranea underground, and the mysterious Moving Island!',
           choices: [{ label: 'Back', nextNodeId: 'root' }],
         },
         theo_heal: {
           id: 'theo_heal',
           speaker: 'Mayor Theo',
-          speakerRole: 'Mayor of Brightfall',
+          speakerRole: 'Mayor of Brightfall City',
           portraitKey: 'npc_mayor_theo',
-          text: 'Your Health and Energy are completely restored!',
+          text: 'Health & Energy restored to 100%!',
           choices: [{ label: 'Feeling ready!', action: { type: 'CLOSE' } }],
+        },
+      };
+    }
+
+    case 'npc_builder_mae': {
+      const canCafe = !save.completedRestorations.includes('rest_brightfall_cafe');
+      const canMarket = !save.completedRestorations.includes('rest_brightfall_market');
+      const canGarden = !save.completedRestorations.includes('rest_brightfall_garden');
+      const canHomes = !save.completedRestorations.includes('rest_brightfall_homes');
+      const canRail = !save.completedRestorations.includes('rest_brightfall_railway');
+      const canPark = !save.completedRestorations.includes('rest_amusement_park');
+      const choices: DialogueChoice[] = [];
+      if (canCafe) {
+        choices.push({
+          label: `Restore Café (30 Sparks + 2 Beans [${itemCount(save, 'cafe_beans')}])`,
+          nextNodeId: 'mae_build_result',
+          action: { type: 'RESTORE_PROJECT', projectId: 'rest_brightfall_cafe' },
+        });
+      }
+      if (canMarket) {
+        choices.push({
+          label: `Revive Market & Mall (40 Sparks + 2 Gears [${itemCount(save, 'brass_gear')}])`,
+          nextNodeId: 'mae_build_result',
+          action: { type: 'RESTORE_PROJECT', projectId: 'rest_brightfall_market' },
+        });
+      }
+      if (canGarden) {
+        choices.push({
+          label: `Restore Central Park (35 Sparks + 3 Berries [${itemCount(save, 'sun_berry')}])`,
+          nextNodeId: 'mae_build_result',
+          action: { type: 'RESTORE_PROJECT', projectId: 'rest_brightfall_garden' },
+        });
+      }
+      if (canHomes) {
+        choices.push({
+          label: 'Repair Residential Lanes & Stage (50 Sparks)',
+          nextNodeId: 'mae_build_result',
+          action: { type: 'RESTORE_PROJECT', projectId: 'rest_brightfall_homes' },
+        });
+      }
+      if (canRail) {
+        choices.push({
+          label: `Reopen Central Railway & Skyport (85 Sparks + 3 Gears [${itemCount(save, 'brass_gear')}])`,
+          nextNodeId: 'mae_build_result',
+          action: { type: 'RESTORE_PROJECT', projectId: 'rest_brightfall_railway' },
+        });
+      }
+      if (canPark) {
+        choices.push({
+          label: `Restore Starfall Amusement Park (90 Sparks + 3 Shards [${itemCount(save, 'aether_shard')}])`,
+          nextNodeId: 'mae_build_result',
+          action: { type: 'RESTORE_PROJECT', projectId: 'rest_amusement_park' },
+        });
+      }
+      choices.push({ label: 'Manage Newbrook Village Construction', action: { type: 'OPEN_VILLAGE' } });
+      choices.push({ label: 'Just inspecting the blueprints.', action: { type: 'CLOSE' } });
+      return {
+        root: {
+          id: 'root',
+          speaker: 'Builder Mae',
+          speakerRole: 'Chief Restorer & Village Architect',
+          portraitKey: 'npc_builder_mae',
+          text: `Welcome to Restoration Hall! Together we’ve completed ${restoredCount} major projects. Ready to rebuild Brightfall, Starfall Park, or your Newbrook Village?`,
+          choices,
+        },
+        mae_build_result: {
+          id: 'mae_build_result',
+          speaker: 'Builder Mae',
+          speakerRole: 'Chief Restorer & Village Architect',
+          portraitKey: 'npc_builder_mae',
+          text: 'Project funded! Step outside to watch Aetheria physically transform!',
+          choices: [{ label: 'Amazing!', action: { type: 'CLOSE' } }],
+        },
+      };
+    }
+
+    case 'npc_engineer_vera': {
+      const skyUnlocked = save.airship.unlocked || save.completedRestorations.includes('rest_brightfall_railway');
+      const canRail = !save.completedRestorations.includes('rest_brightfall_railway');
+      const choices: DialogueChoice[] = [];
+      if (!skyUnlocked && !save.quests['q_airship_wings']) {
+        choices.push({
+          label: 'How do I unlock the Flying Airship?',
+          nextNodeId: 'vera_quest',
+          action: { type: 'START_QUEST', questId: 'q_airship_wings' },
+        });
+      }
+      if (canRail) {
+        choices.push({
+          label: `Repair Skyport & Railway (85 Sparks + 3 Gears [${itemCount(save, 'brass_gear')}])`,
+          nextNodeId: 'vera_unlocked',
+          action: { type: 'RESTORE_PROJECT', projectId: 'rest_brightfall_railway' },
+        });
+      }
+      if (skyUnlocked) {
+        choices.push({ label: 'Launch Flying Airship! [Shortcut: V]', action: { type: 'BOARD_AIRSHIP' } });
+        choices.push({ label: 'Upgrade & Customize Airship Hangar', action: { type: 'OPEN_AIRSHIP' } });
+      }
+      choices.push({ label: 'Back to the skyport', action: { type: 'CLOSE' } });
+      return {
+        root: {
+          id: 'root',
+          speaker: 'Engineer Vera',
+          speakerRole: 'Grand Skyport & Rail Captain',
+          portraitKey: 'npc_engineer_vera',
+          text: skyUnlocked
+            ? 'The Skywing Airship is prepped on the launch pad! Press [V] anytime outdoors to take flight above mountains and oceans, or upgrade speed & hull here.'
+            : 'Brightfall’s Grand Skyport connects directly to Sky Island and the high peaks—once we repair the Central Railway & Skyport turbines!',
+          choices,
+        },
+        vera_quest: {
+          id: 'vera_quest',
+          speaker: 'Engineer Vera',
+          speakerRole: 'Grand Skyport Captain',
+          portraitKey: 'npc_engineer_vera',
+          text: 'Bring 3 Clockwork Gears and 85 Sparks to restore the Skyport & Railway, and the Skywing Airship becomes yours forever!',
+          choices: [{ label: 'Got it!', action: { type: 'CLOSE' } }],
+        },
+        vera_unlocked: {
+          id: 'vera_unlocked',
+          speaker: 'Engineer Vera',
+          speakerRole: 'Grand Skyport Captain',
+          portraitKey: 'npc_engineer_vera',
+          text: 'The propellers roar to life! Press [V] or click Launch Airship anytime to fly!',
+          choices: [{ label: 'Take Flight Now!', action: { type: 'BOARD_AIRSHIP' } }, { label: 'Later', action: { type: 'CLOSE' } }],
+        },
+      };
+    }
+
+    case 'npc_station_master':
+      return {
+        root: {
+          id: 'root',
+          speaker: 'Conductor Bram',
+          speakerRole: 'Brightfall Central Station',
+          portraitKey: 'npc_station_master',
+          text: 'All aboard the Brightfall Express! Our rail line runs straight north toward Frostpeak & the Skyport and connects buses across brightfall.',
+          choices: [
+            { label: 'Fast Travel via World Map', action: { type: 'CLOSE' } },
+          ],
+        },
+      };
+
+    case 'npc_doctor_claire': {
+      const q = save.quests['q_wildlife_photo'];
+      const choices: DialogueChoice[] = [
+        { label: 'Medical Checkup & Full Vitality Heal', nextNodeId: 'doc_heal', action: { type: 'HEAL_PLAYER' } },
+      ];
+      if (!q) {
+        choices.push({
+          label: 'Accept Giants of Aetheria Photography Quest!',
+          nextNodeId: 'doc_q',
+          action: { type: 'START_QUEST', questId: 'q_wildlife_photo' },
+        });
+      }
+      choices.push({ label: 'Thank you, Doctor!', action: { type: 'CLOSE' } });
+      return {
+        root: {
+          id: 'root',
+          speaker: 'Dr. Claire',
+          speakerRole: 'Brightfall Hospital Chief & Naturalist',
+          portraitKey: 'npc_doctor_claire',
+          text: `Welcome to Brightfall Central Hospital! Need healing, or want to help document Aetheria’s Giant Roaming Creatures with your Camera [P]? You’ve snapped ${save.photos.length} photos so far.`,
+          choices,
+        },
+        doc_heal: { id: 'doc_heal', speaker: 'Dr. Claire', speakerRole: 'Hospital Chief', portraitKey: 'npc_doctor_claire', text: 'Full Health, Energy, and rest restored!', choices: [{ label: 'Thanks!', action: { type: 'CLOSE' } }] },
+        doc_q: { id: 'doc_q', speaker: 'Dr. Claire', speakerRole: 'Hospital Chief', portraitKey: 'npc_doctor_claire', text: 'Press [P] near any Giant Roaming Creature—Glacier Mammoth, Elder Forest Stag, Leviathan Whale, or Sky Manta—to capture a Wildlife Photo!', choices: [{ label: 'Camera ready!', action: { type: 'CLOSE' } }] },
+      };
+    }
+
+    case 'npc_librarian_elena': {
+      const q = save.quests['q_moving_island_clue'];
+      const charts = itemCount(save, 'moving_logbook');
+      const slotHints = [
+        'southwest ocean channel between Brightfall and Wild Jungle',
+        'southeastern sea south of Volcanic Island',
+        'northeastern drift between Frozen Kingdom and Sky Island',
+        'northwestern waters near Lost Kingdom',
+      ];
+      const choices: DialogueChoice[] = [];
+      if (!q) {
+        choices.push({
+          label: 'Ask about the Mysterious Moving Island',
+          nextNodeId: 'elena_moving',
+          action: { type: 'START_QUEST', questId: 'q_moving_island_clue' },
+        });
+      } else if (q.status === 'active' && save.defeatedGuardians.includes('drift_leviathan')) {
+        choices.push({
+          label: 'I calmed Thalassa on Driftspire Isle!',
+          action: { type: 'COMPLETE_QUEST', questId: 'q_moving_island_clue' },
+        });
+      }
+      choices.push({ label: `Reveal Current Moving Island Bearing (${charts} Charts found)`, nextNodeId: 'elena_clue' });
+      choices.push({ label: 'Back to reading', action: { type: 'CLOSE' } });
+      return {
+        root: {
+          id: 'root',
+          speaker: 'Librarian Elena',
+          speakerRole: 'Grand Library Archivist',
+          portraitKey: 'npc_librarian_elena',
+          text: 'Every ancient chart in Brightfall Grand Library tells of Driftspire Isle—an enchanted island that refuses to stay anchored in one corner of Aetheria Sea.',
+          choices,
+        },
+        elena_moving: {
+          id: 'elena_moving',
+          speaker: 'Librarian Elena',
+          speakerRole: 'Grand Library Archivist',
+          portraitKey: 'npc_librarian_elena',
+          text: `My latest current calculations place Driftspire Isle in the ${slotHints[save.movingIslandSlot % 4]}! Sail or fly there before the tide shifts!`,
+          choices: [{ label: 'Chart set!', action: { type: 'CLOSE' } }],
+        },
+        elena_clue: {
+          id: 'elena_clue',
+          speaker: 'Librarian Elena',
+          speakerRole: 'Grand Library Archivist',
+          portraitKey: 'npc_librarian_elena',
+          text: `Tidal charts indicate Driftspire Isle is currently anchored in the ${slotHints[save.movingIslandSlot % 4]}. Look for floating sea mist and coral rings!`,
+          choices: [{ label: 'Thank you!', action: { type: 'CLOSE' } }],
+        },
+      };
+    }
+
+    case 'npc_tackle_master':
+      return {
+        root: {
+          id: 'root',
+          speaker: 'Reef',
+          speakerRole: 'Grand Marina Tackle Outfitter',
+          portraitKey: 'npc_tackle_master',
+          text: `Catching rare and Legendary fish depends on your Rod, Line, Bait, Hook, weather, and water type! You’ve logged ${save.discoveredFish.length}/12 species so far.`,
+          choices: [
+            { label: 'Open Fishing Tackle & Equipment Shop', action: { type: 'OPEN_EQUIPMENT' } },
+            { label: 'Cast Line off Marina Pier', action: { type: 'OPEN_MINIGAME', miniGameId: 'fishing' } },
+            { label: 'Sell Fish & Browse Marina Goods', action: { type: 'OPEN_SHOP', shopId: 'harbour_shop' } },
+            { label: 'Later, Reef', action: { type: 'CLOSE' } },
+          ],
+        },
+      };
+
+    case 'npc_officer_blake':
+      return {
+        root: {
+          id: 'root',
+          speaker: 'Officer Blake',
+          speakerRole: 'Brightfall Civic Safety & Fire Chief',
+          portraitKey: 'npc_officer_blake',
+          text: 'Police patrols and the Brightfall Fire Brigade are keeping every avenue safe while holiday lights brighten the city!',
+          choices: [
+            { label: 'Manage Brightfall Seasonal Events', action: { type: 'OPEN_EVENTS' } },
+            { label: 'Stay safe, Officer!', action: { type: 'CLOSE' } },
+          ],
+        },
+      };
+
+    case 'npc_arcade_host':
+      return {
+        root: {
+          id: 'root',
+          speaker: 'Rex',
+          speakerRole: 'Starlight Cinema & Arcade Host',
+          portraitKey: 'npc_arcade_host',
+          text: 'Welcome to Brightfall Cinema & Arcade! Step up to our cabinets or relive festival rhythm shows anytime!',
+          choices: [
+            { label: 'Play Harmony Rhythm Cabinet', action: { type: 'OPEN_MINIGAME', miniGameId: 'rhythm' } },
+            { label: 'Play Ancient Rune Memory Arcade', action: { type: 'OPEN_MINIGAME', miniGameId: 'runememory' } },
+            { label: 'Play Starfall Carnival Shootout', action: { type: 'OPEN_MINIGAME', miniGameId: 'carnival' } },
+            { label: 'Just watching the movie posters', action: { type: 'CLOSE' } },
+          ],
+        },
+      };
+
+    case 'npc_carnival_host': {
+      const done = save.completedRestorations.includes('rest_amusement_park');
+      const choices: DialogueChoice[] = [
+        { label: 'Play Starfall Carnival Midway!', action: { type: 'OPEN_MINIGAME', miniGameId: 'carnival' } },
+        { label: 'Browse Prize & Treat Counter', action: { type: 'OPEN_SHOP', shopId: 'carnival_shop' } },
+      ];
+      if (!done) {
+        choices.unshift({
+          label: `Restore Starfall Amusement Park (90 Sparks + 3 Shards [${itemCount(save, 'aether_shard')}])`,
+          nextNodeId: 'park_restored',
+          action: { type: 'RESTORE_PROJECT', projectId: 'rest_amusement_park' },
+        });
+      }
+      if (!save.quests['q_amusement_revival']) {
+        choices.push({ label: 'Start Starfall Carnival Quest', action: { type: 'START_QUEST', questId: 'q_amusement_revival' } });
+      }
+      choices.push({ label: 'Back to the boardwalk', action: { type: 'CLOSE' } });
+      return {
+        root: {
+          id: 'root',
+          speaker: 'Pippa Star',
+          speakerRole: 'Starfall Amusement Park Ringmaster',
+          portraitKey: 'npc_carnival_host',
+          text: done
+            ? 'The Ferris wheel is spinning, the coastal rollercoaster glows over the ocean, and everyone loves Starfall Amusement Park!'
+            : 'Welcome to abandoned Starfall Amusement Park! Restore power with 90 Sparks & 3 Aether Shards to spin up the Ferris wheel, rollercoaster, bumper cars, and carnival prizes!',
+          choices,
+        },
+        park_restored: {
+          id: 'park_restored',
+          speaker: 'Pippa Star',
+          speakerRole: 'Ringmaster',
+          portraitKey: 'npc_carnival_host',
+          text: 'Lights up!! Look at the Ferris wheel and rollercoaster sparkling over the waves!',
+          choices: [{ label: 'Play Carnival Game!', action: { type: 'OPEN_MINIGAME', miniGameId: 'carnival' } }, { label: 'Awesome!', action: { type: 'CLOSE' } }],
+        },
+      };
+    }
+
+    case 'npc_newbrook_foreman': {
+      const built = save.village.buildings.length;
+      return {
+        root: {
+          id: 'root',
+          speaker: 'Foreman Alden',
+          speakerRole: 'Newbrook Valley Planner',
+          portraitKey: 'npc_newbrook_foreman',
+          text: `Welcome to Newbrook Settlement! Right now we have ${built} buildings and ${save.village.residents.length} residents. Ready to construct cottages, bakeries, gardens, or bridges right here on the map?`,
+          choices: [
+            ...(!save.quests['q_newbrook_founder']
+              ? [{ label: 'Accept Founding Newbrook Quest!', action: { type: 'START_QUEST' as const, questId: 'q_newbrook_founder' } }]
+              : []),
+            { label: 'Open Village Builder Blueprints', action: { type: 'OPEN_VILLAGE' } },
+            { label: 'Back to inspecting the valley', action: { type: 'CLOSE' } },
+          ],
+        },
+      };
+    }
+
+    case 'npc_delver_torin': {
+      const gems = itemCount(save, 'lumina_gem');
+      const q = save.quests['q_underground_depths'];
+      const choices: DialogueChoice[] = [];
+      if (!q) {
+        choices.push({
+          label: 'Tell me about Subterranea & Lumina Gems!',
+          nextNodeId: 'torin_q',
+          action: { type: 'START_QUEST', questId: 'q_underground_depths' },
+        });
+      } else if (q.status === 'active' && gems >= 2) {
+        choices.push({
+          label: 'Here are the 2 Lumina Cavern Gems! (Recruit Torin)',
+          nextNodeId: 'torin_join',
+          action: { type: 'COMPLETE_QUEST', questId: 'q_underground_depths' },
+        });
+      }
+      choices.push({ label: 'Fish the Underground Crystal River', action: { type: 'OPEN_MINIGAME', miniGameId: 'fishing' } });
+      choices.push({ label: 'Explore Subterranea Ancient Lab', action: { type: 'ENTER_ZONE', interiorId: 'int_ancient_lab' } });
+      choices.push({ label: 'Rest at Delver Outpost (Heal)', nextNodeId: 'torin_heal', action: { type: 'HEAL_PLAYER' } });
+      choices.push({ label: 'Carry on deeper', action: { type: 'CLOSE' } });
+      return {
+        root: {
+          id: 'root',
+          speaker: 'Torin the Delver',
+          speakerRole: 'Subterranean Warden',
+          portraitKey: 'npc_delver_torin',
+          text: `Welcome to Subterranea—Aetheria’s hidden underground civilisation! Our crystal streams and ancient clockwork laboratories kept burning even through the Great Fall. Lumina Gems carried: ${gems}/2.`,
+          choices,
+        },
+        torin_q: { id: 'torin_q', speaker: 'Torin', speakerRole: 'Subterranean Warden', portraitKey: 'npc_delver_torin', text: 'Gather 2 Lumina Cavern Gems right here in Subterranea or the Ancient Lab and I’ll join your adventure team!', choices: [{ label: 'On it!', action: { type: 'CLOSE' } }] },
+        torin_join: { id: 'torin_join', speaker: 'Torin', speakerRole: 'Subterranean Warden', portraitKey: 'npc_delver_torin', text: 'Subterranea stands with Brightfall! You can now switch to Torin in Characters anytime!', choices: [{ label: 'Welcome aboard!', action: { type: 'CLOSE' } }] },
+        torin_heal: { id: 'torin_heal', speaker: 'Torin', speakerRole: 'Subterranean Warden', portraitKey: 'npc_delver_torin', text: 'Crystal springs restored your Health and Energy!', choices: [{ label: 'Thank you!', action: { type: 'CLOSE' } }] },
+      };
+    }
+
+    case 'npc_scholar_lyra_alt': {
+      const done = save.defeatedGuardians.includes('rift_archon');
+      const q = save.quests['q_alternate_rifts'];
+      return {
+        root: {
+          id: 'root',
+          speaker: 'Chronicle Vespera',
+          speakerRole: 'Alternate Rift Guide',
+          portraitKey: 'npc_scholar_lyra_alt',
+          text: done
+            ? 'With Chronos-IX harmonized, the three Alternate Dimensions—Starlight Mirror, Primordial Aether, and Shattered Void—spin in peaceful orbit.'
+            : 'You stepped across dimensional fabric! Explore Mirror Brightfall, Primordial Aether (where the Fall never occurred), and the Shattered Rift Citadel to face Chronos-IX!',
+          choices: [
+            ...(!q && !done ? [{ label: 'Accept Beyond the Mirror Rift Quest', action: { type: 'START_QUEST' as const, questId: 'q_alternate_rifts' } }] : []),
+            { label: 'Step into Primordial Aether (Pre-Fall Timeline)', action: { type: 'ENTER_ZONE', interiorId: 'dim_verdant' } },
+            { label: 'Step into Shattered Rift Citadel (Boss Dimension)', action: { type: 'ENTER_ZONE', interiorId: 'dim_void' } },
+            { label: 'Stay in Mirror Brightfall', action: { type: 'CLOSE' } },
+          ],
         },
       };
     }
@@ -483,12 +1138,10 @@ export function buildNpcDialogue(npcId: string, save: SaveData): Record<string, 
           speaker: 'Grocer Hana',
           speakerRole: 'Aetheria Fresh Mart Owner',
           portraitKey: 'npc_grocer_hana',
-          text: isNight
-            ? 'We keep a warm late-night counter stocked for hungry explorers! Fresh fruits, veggies, cheeses, meats, and cider ready anytime.'
-            : 'Welcome to Aetheria Fresh Mart! Stock up on fruits, veggies, meats, snacks, and ingredients to keep your Hunger full or cook recipes at your House!',
+          text: 'Welcome to Aetheria Fresh Mart! Fruits, vegetables, cheeses, roasts, and warm holiday cocoa ready anytime!',
           choices: [
             { label: 'Shop Fresh Mart Groceries', action: { type: 'OPEN_SHOP', shopId: 'supermarket' } },
-            { label: 'Just browsing, thanks!', action: { type: 'CLOSE' } },
+            { label: 'Just browsing!', action: { type: 'CLOSE' } },
           ],
         },
       };
@@ -500,7 +1153,7 @@ export function buildNpcDialogue(npcId: string, save: SaveData): Record<string, 
           speaker: 'Chef Marcus',
           speakerRole: 'Golden Skillet Bistro',
           portraitKey: 'npc_chef_marcus',
-          text: 'Pull up a stool at The Golden Skillet! Hot stews, skillet feasts, and berry tarts—perfect before sailing across open ocean!',
+          text: 'Pull up a chair at The Golden Skillet! Hot stews, skillet feasts, and berry tarts—perfect before voyages!',
           choices: [
             { label: 'Order from Bistro Menu', action: { type: 'OPEN_SHOP', shopId: 'restaurant' } },
             { label: 'Try Cooking Challenge Mini-Game', action: { type: 'OPEN_MINIGAME', miniGameId: 'cooking' } },
@@ -516,9 +1169,9 @@ export function buildNpcDialogue(npcId: string, save: SaveData): Record<string, 
           speaker: 'Smith Garrick',
           speakerRole: 'Anvil & Spark Armory',
           portraitKey: 'npc_smith_garrick',
-          text: 'Looking to craft or upgrade fantasy blades, bows, forge hammers, staffs, or Mariner fishing rods? Step right up to the anvil!',
+          text: 'Need blades, bows, forge hammers, protective armor, or fishing tackle? Check the forge anytime!',
           choices: [
-            { label: 'Open Armory & Equipment Forge', action: { type: 'OPEN_EQUIPMENT' } },
+            { label: 'Open Armory, Armor & Tackle Shop', action: { type: 'OPEN_EQUIPMENT' } },
             { label: 'Catch you later, Garrick.', action: { type: 'CLOSE' } },
           ],
         },
@@ -526,15 +1179,16 @@ export function buildNpcDialogue(npcId: string, save: SaveData): Record<string, 
 
     case 'npc_coach_leo': {
       const q = save.quests['q_island_sports'];
-      const choices: DialogueNode['choices'] = [
+      const choices: DialogueChoice[] = [
         { label: 'Play Football Penalty Challenge', action: { type: 'OPEN_MINIGAME', miniGameId: 'football' } },
         { label: 'Play Basketball Hoops Challenge', action: { type: 'OPEN_MINIGAME', miniGameId: 'basketball' } },
+        { label: 'Play Tennis Rally Tournament', action: { type: 'OPEN_MINIGAME', miniGameId: 'tennis' } },
+        { label: 'Enter Olympic Swimming Lap Sprint', action: { type: 'OPEN_MINIGAME', miniGameId: 'swimming' } },
         { label: 'Start Brightfall Bicycle Race', action: { type: 'OPEN_MINIGAME', miniGameId: 'bicyclerace' } },
       ];
       if (!q) {
         choices.unshift({
-          label: 'Accept the Brightfall Sports Pentathlon Quest!',
-          nextNodeId: 'leo_accepted',
+          label: 'Accept Brightfall Sports Championship Quest!',
           action: { type: 'START_QUEST', questId: 'q_island_sports' },
         });
       }
@@ -543,21 +1197,10 @@ export function buildNpcDialogue(npcId: string, save: SaveData): Record<string, 
         root: {
           id: 'root',
           speaker: 'Coach Leo',
-          speakerRole: 'Brightfall Sports Director',
+          speakerRole: 'Olympic Sports Park Director',
           portraitKey: 'npc_coach_leo',
-          text: 'Welcome to Brightfall Sports Park! Whether it’s sinking three-pointers, scoring goals, or pedaling the forest trail, sports bring folks back together!',
+          text: 'Welcome to Brightfall Olympic Sports Park! Football stadium, Basketball court, Tennis court, Swimming pool, and Cycling track—all open for competition!',
           choices,
-        },
-        leo_accepted: {
-          id: 'leo_accepted',
-          speaker: 'Coach Leo',
-          speakerRole: 'Brightfall Sports Director',
-          portraitKey: 'npc_coach_leo',
-          text: 'Play a round of Football and Basketball right here to earn Sparks and a Woven Horizon Rug for your house!',
-          choices: [
-            { label: 'Play Football Now', action: { type: 'OPEN_MINIGAME', miniGameId: 'football' } },
-            { label: 'Later', action: { type: 'CLOSE' } },
-          ],
         },
       };
     }
@@ -569,16 +1212,10 @@ export function buildNpcDialogue(npcId: string, save: SaveData): Record<string, 
           speaker: 'Dockmaster Vane',
           speakerRole: 'Harbour Master & Boatwright',
           portraitKey: 'npc_dockmaster_vane',
-          text: `Your vessel is moored right off Driftwood Pier (Boat Tier ${save.boatLevel}/3). Board anytime to sail across Aetheria Sea to all six islands—or test your speed in the Ocean Boat Race!`,
+          text: `Your vessel (${save.boatUpgrades.skin.toUpperCase()} · Speed Lv.${save.boatUpgrades.speedLevel}) is moored off Driftwood Grand Marina! Sail across reefs and waves to six outer islands, or upgrade hull & sails!`,
           choices: [
             { label: 'Board Boat & Set Sail!', action: { type: 'BOARD_BOAT' } },
-            {
-              label:
-                save.boatLevel < 3
-                  ? `Upgrade Boat Hull & Sails (${save.boatLevel === 1 ? 80 : 150} Sparks)`
-                  : 'Boat Fully Upgraded (Tier 3)',
-              action: { type: 'UPGRADE_BOAT' },
-            },
+            { label: 'Customize Boat & Buy Ship Upgrades', action: { type: 'OPEN_AIRSHIP' } },
             { label: 'Enter Ocean Boat Race Mini-Game', action: { type: 'OPEN_MINIGAME', miniGameId: 'boatrace' } },
             { label: 'Browse Marina Outfitters Shop', action: { type: 'OPEN_SHOP', shopId: 'harbour_shop' } },
             { label: 'Stay on dock', action: { type: 'CLOSE' } },
@@ -593,10 +1230,10 @@ export function buildNpcDialogue(npcId: string, save: SaveData): Record<string, 
           speaker: 'Farmer Pippa',
           speakerRole: 'Brightfall Orchard Keeper',
           portraitKey: 'npc_farmer_pippa',
-          text: 'Rain or shine, the Brightfall Orchards keep growing back stronger! Stop by whenever you need apples, carrots, or warm cider.',
+          text: 'Brightfall’s orchards are flourishing again! Need crisp apples, carrots, or warm cider?',
           choices: [
             { label: 'Buy Orchard Produce', action: { type: 'OPEN_SHOP', shopId: 'supermarket' } },
-            { label: 'See you around the orchard!', action: { type: 'CLOSE' } },
+            { label: 'See you around!', action: { type: 'CLOSE' } },
           ],
         },
       };
@@ -606,76 +1243,21 @@ export function buildNpcDialogue(npcId: string, save: SaveData): Record<string, 
         root: {
           id: 'root',
           speaker: 'Eli',
-          speakerRole: 'Neighborhood Jogger',
+          speakerRole: 'Neighborhood Runner',
           portraitKey: 'npc_townsperson_eli',
           text:
-            save.weather === 'light_rain' || save.weather === 'heavy_rain'
-              ? 'Rain puddles across the cobbles! Good thing Golden Skillet Bistro serves hot chowder inside.'
-              : 'Nothing beats jogging past the Sports Park and down to Sunset Beach!',
-          choices: [{ label: 'Keep up the pace!', action: { type: 'CLOSE' } }],
+            save.cityEvent === 'christmas'
+              ? 'Hot cocoa and twinkling holiday trees all down Brightfall Avenue—it feels like Christmas in New York!'
+              : 'Nothing beats jogging from Central Station past the Olympic Stadium down to Sunset Beach!',
+          choices: [{ label: 'Keep moving!', action: { type: 'CLOSE' } }],
         },
       };
-
-    case 'npc_builder_mae': {
-      const canCafe = !save.completedRestorations.includes('rest_brightfall_cafe');
-      const canMarket = !save.completedRestorations.includes('rest_brightfall_market');
-      const canGarden = !save.completedRestorations.includes('rest_brightfall_garden');
-      const canHomes = !save.completedRestorations.includes('rest_brightfall_homes');
-      const choices: DialogueNode['choices'] = [];
-      if (canCafe) {
-        choices.push({
-          label: `Restore Café (30 Sparks + 2 Amber Beans [have ${itemCount(save, 'cafe_beans')}])`,
-          nextNodeId: 'mae_build_result',
-          action: { type: 'RESTORE_PROJECT', projectId: 'rest_brightfall_cafe' },
-        });
-      }
-      if (canMarket) {
-        choices.push({
-          label: `Revive Market (40 Sparks + 2 Brass Gears [have ${itemCount(save, 'brass_gear')}])`,
-          nextNodeId: 'mae_build_result',
-          action: { type: 'RESTORE_PROJECT', projectId: 'rest_brightfall_market' },
-        });
-      }
-      if (canGarden) {
-        choices.push({
-          label: `Restore Garden (35 Sparks + 3 Sunpetal Berries [have ${itemCount(save, 'sun_berry')}])`,
-          nextNodeId: 'mae_build_result',
-          action: { type: 'RESTORE_PROJECT', projectId: 'rest_brightfall_garden' },
-        });
-      }
-      if (canHomes) {
-        choices.push({
-          label: 'Repair Cottages & Festival Stage (50 Sparks)',
-          nextNodeId: 'mae_build_result',
-          action: { type: 'RESTORE_PROJECT', projectId: 'rest_brightfall_homes' },
-        });
-      }
-      choices.push({ label: 'Just checking the blueprints.', action: { type: 'CLOSE' } });
-      return {
-        root: {
-          id: 'root',
-          speaker: 'Builder Mae',
-          speakerRole: 'Town Carpenter & Restorer',
-          portraitKey: 'npc_builder_mae',
-          text: `Welcome to the Restoration Hall! We’ve completed ${restoredCount} restoration milestones across Aetheria.`,
-          choices,
-        },
-        mae_build_result: {
-          id: 'mae_build_result',
-          speaker: 'Builder Mae',
-          speakerRole: 'Town Carpenter & Restorer',
-          portraitKey: 'npc_builder_mae',
-          text: 'Step outside to watch Brightfall transform!',
-          choices: [{ label: 'Awesome!', action: { type: 'CLOSE' } }],
-        },
-      };
-    }
 
     case 'npc_chef_clara': {
       const cafeDone = save.completedRestorations.includes('rest_brightfall_cafe');
       const q = save.quests['q_cafe_beans'];
       const beans = itemCount(save, 'cafe_beans');
-      const choices: DialogueNode['choices'] = [];
+      const choices: DialogueChoice[] = [];
       if (!cafeDone) {
         if (!q) {
           choices.push({
@@ -707,30 +1289,9 @@ export function buildNpcDialogue(npcId: string, save: SaveData): Record<string, 
             : `My Café took a beating in the Great Fall! You have ${beans}/2 Roasted Amber Beans.`,
           choices,
         },
-        clara_quest: {
-          id: 'clara_quest',
-          speaker: 'Chef Clara',
-          speakerRole: 'Hearth & Crumb Baker',
-          portraitKey: 'npc_chef_clara',
-          text: 'Look around Brightfall’s south park and eastern lane for 2 bean crates!',
-          choices: [{ label: 'On it!', action: { type: 'CLOSE' } }],
-        },
-        clara_reopened: {
-          id: 'clara_reopened',
-          speaker: 'Chef Clara',
-          speakerRole: 'Hearth & Crumb Baker',
-          portraitKey: 'npc_chef_clara',
-          text: 'Hearth & Crumb Café is back open! Look at the warm lanterns across the plaza!',
-          choices: [{ label: 'Cheers!', action: { type: 'CLOSE' } }],
-        },
-        clara_heal: {
-          id: 'clara_heal',
-          speaker: 'Chef Clara',
-          speakerRole: 'Hearth & Crumb Baker',
-          portraitKey: 'npc_chef_clara',
-          text: 'Health and Energy topped right back up!',
-          choices: [{ label: 'Delicious!', action: { type: 'CLOSE' } }],
-        },
+        clara_quest: { id: 'clara_quest', speaker: 'Chef Clara', speakerRole: 'Baker', portraitKey: 'npc_chef_clara', text: 'Check Brightfall’s south park and eastern lane for 2 bean crates!', choices: [{ label: 'On it!', action: { type: 'CLOSE' } }] },
+        clara_reopened: { id: 'clara_reopened', speaker: 'Chef Clara', speakerRole: 'Baker', portraitKey: 'npc_chef_clara', text: 'Hearth & Crumb Café is back open!', choices: [{ label: 'Cheers!', action: { type: 'CLOSE' } }] },
+        clara_heal: { id: 'clara_heal', speaker: 'Chef Clara', speakerRole: 'Baker', portraitKey: 'npc_chef_clara', text: 'Health and Energy topped right back up!', choices: [{ label: 'Delicious!', action: { type: 'CLOSE' } }] },
       };
     }
 
@@ -738,9 +1299,9 @@ export function buildNpcDialogue(npcId: string, save: SaveData): Record<string, 
       const marketDone = save.completedRestorations.includes('rest_brightfall_market');
       const q = save.quests['q_market_gears'];
       const gears = itemCount(save, 'brass_gear');
-      const choices: DialogueNode['choices'] = [];
+      const choices: DialogueChoice[] = [];
       if (marketDone) {
-        choices.push({ label: 'Browse Brightfall Market Goods', action: { type: 'OPEN_SHOP', shopId: 'market' } });
+        choices.push({ label: 'Browse Brightfall Market & Mall', action: { type: 'OPEN_SHOP', shopId: 'market' } });
       } else {
         if (!q) {
           choices.push({
@@ -762,29 +1323,15 @@ export function buildNpcDialogue(npcId: string, save: SaveData): Record<string, 
         root: {
           id: 'root',
           speaker: 'Merchant Milo',
-          speakerRole: 'Brightfall General Goods',
+          speakerRole: 'Brightfall Market & Mall',
           portraitKey: 'npc_merchant_milo',
           text: marketDone
-            ? 'Welcome to Brightfall Market! Supplies, house decor, and snacks in stock.'
-            : `Bring me 2 Clockwork Gears (${gears}/2) and 40 Sparks to reopen the market!`,
+            ? 'Welcome to Brightfall Market & Mall! Materials, winter trees, chandeliers, and gear await!'
+            : `Bring 2 Clockwork Gears (${gears}/2) and 40 Sparks to reopen the Market & Mall!`,
           choices,
         },
-        milo_quest: {
-          id: 'milo_quest',
-          speaker: 'Merchant Milo',
-          speakerRole: 'Brightfall General Goods',
-          portraitKey: 'npc_merchant_milo',
-          text: 'Check town chests or the Training Hall!',
-          choices: [{ label: 'Got it!', action: { type: 'CLOSE' } }],
-        },
-        milo_open: {
-          id: 'milo_open',
-          speaker: 'Merchant Milo',
-          speakerRole: 'Brightfall General Goods',
-          portraitKey: 'npc_merchant_milo',
-          text: 'The market bell chimes again!',
-          choices: [{ label: 'Open Shop', action: { type: 'OPEN_SHOP', shopId: 'market' } }, { label: 'Later', action: { type: 'CLOSE' } }],
-        },
+        milo_quest: { id: 'milo_quest', speaker: 'Merchant Milo', speakerRole: 'Market', portraitKey: 'npc_merchant_milo', text: 'Check town chests or the Training Hall!', choices: [{ label: 'Got it!', action: { type: 'CLOSE' } }] },
+        milo_open: { id: 'milo_open', speaker: 'Merchant Milo', speakerRole: 'Market', portraitKey: 'npc_merchant_milo', text: 'The market bell chimes again!', choices: [{ label: 'Open Shop', action: { type: 'OPEN_SHOP', shopId: 'market' } }, { label: 'Later', action: { type: 'CLOSE' } }] },
       };
     }
 
@@ -792,22 +1339,10 @@ export function buildNpcDialogue(npcId: string, save: SaveData): Record<string, 
       const gardenDone = save.completedRestorations.includes('rest_brightfall_garden');
       const q = save.quests['q_garden_bloom'];
       const berries = itemCount(save, 'sun_berry');
-      const choices: DialogueNode['choices'] = [{ label: 'Change Character or Outfit', action: { type: 'OPEN_CHARACTERS' } }];
+      const choices: DialogueChoice[] = [{ label: 'Change Character or Outfit', action: { type: 'OPEN_CHARACTERS' } }];
       if (!gardenDone) {
-        if (!q) {
-          choices.push({
-            label: 'Tell me about the Community Garden project.',
-            nextNodeId: 'june_quest',
-            action: { type: 'START_QUEST', questId: 'q_garden_bloom' },
-          });
-        }
-        if (berries >= 3 && save.sparks >= 35) {
-          choices.push({
-            label: 'Restore the Garden (3 Berries + 35 Sparks)!',
-            nextNodeId: 'june_done',
-            action: { type: 'RESTORE_PROJECT', projectId: 'rest_brightfall_garden' },
-          });
-        }
+        if (!q) choices.push({ label: 'Tell me about Central Park.', nextNodeId: 'june_quest', action: { type: 'START_QUEST', questId: 'q_garden_bloom' } });
+        if (berries >= 3 && save.sparks >= 35) choices.push({ label: 'Restore Central Park (3 Berries + 35 Sparks)!', nextNodeId: 'june_done', action: { type: 'RESTORE_PROJECT', projectId: 'rest_brightfall_garden' } });
       }
       choices.push({ label: 'Back to exploring!', action: { type: 'CLOSE' } });
       return {
@@ -816,43 +1351,19 @@ export function buildNpcDialogue(npcId: string, save: SaveData): Record<string, 
           speaker: 'Tailor June',
           speakerRole: 'Atelier Designer',
           portraitKey: 'npc_tailor_june',
-          text: gardenDone
-            ? 'The Community Garden is blooming and Festival outfits are ready!'
-            : `Switch companions or outfits anytime here! Bring 3 Sunpetal Berries (${berries}/3) to restore the garden.`,
+          text: gardenDone ? 'Central Park is blooming and Festival outfits are ready!' : `Bring 3 Sunpetal Berries (${berries}/3) to restore Brightfall Central Park.`,
           choices,
         },
-        june_quest: {
-          id: 'june_quest',
-          speaker: 'Tailor June',
-          speakerRole: 'Atelier Designer',
-          portraitKey: 'npc_tailor_june',
-          text: 'Sunpetal Berries grow near Brightfall Park and the woods border.',
-          choices: [{ label: 'On it!', action: { type: 'CLOSE' } }],
-        },
-        june_done: {
-          id: 'june_done',
-          speaker: 'Tailor June',
-          speakerRole: 'Atelier Designer',
-          portraitKey: 'npc_tailor_june',
-          text: 'Brightfall Festival outfits are now unlocked!',
-          choices: [{ label: 'Try it on', action: { type: 'OPEN_CHARACTERS' } }, { label: 'Thanks!', action: { type: 'CLOSE' } }],
-        },
+        june_quest: { id: 'june_quest', speaker: 'Tailor June', speakerRole: 'Atelier', portraitKey: 'npc_tailor_june', text: 'Sunpetal Berries grow around the park and forest border.', choices: [{ label: 'On it!', action: { type: 'CLOSE' } }] },
+        june_done: { id: 'june_done', speaker: 'Tailor June', speakerRole: 'Atelier', portraitKey: 'npc_tailor_june', text: 'Brightfall Festival outfits unlocked!', choices: [{ label: 'Try it on', action: { type: 'OPEN_CHARACTERS' } }, { label: 'Thanks!', action: { type: 'CLOSE' } }] },
       };
     }
 
     case 'npc_trainer_kael': {
       const q = save.quests['q_archery_champion'];
       const best = save.miniGameBestScores.archery ?? 0;
-      const choices: DialogueNode['choices'] = [
-        { label: 'Play Aether Archery Challenge!', action: { type: 'OPEN_MINIGAME', miniGameId: 'archery' } },
-      ];
-      if (!q) {
-        choices.push({
-          label: 'Accept Aether Range Quest.',
-          nextNodeId: 'kael_q',
-          action: { type: 'START_QUEST', questId: 'q_archery_champion' },
-        });
-      }
+      const choices: DialogueChoice[] = [{ label: 'Play Aether Archery Challenge!', action: { type: 'OPEN_MINIGAME', miniGameId: 'archery' } }];
+      if (!q) choices.push({ label: 'Accept Aether Range Quest.', nextNodeId: 'kael_q', action: { type: 'START_QUEST', questId: 'q_archery_champion' } });
       choices.push({ label: 'Later, Coach.', action: { type: 'CLOSE' } });
       return {
         root: {
@@ -863,14 +1374,7 @@ export function buildNpcDialogue(npcId: string, save: SaveData): Record<string, 
           text: `Steady aim! Personal best: ${best} pts. Ready for target practice?`,
           choices,
         },
-        kael_q: {
-          id: 'kael_q',
-          speaker: 'Trainer Kael',
-          speakerRole: 'Aether Athletics Coach',
-          portraitKey: 'npc_trainer_kael',
-          text: 'Score points on the range to earn Sparks and a Clockwork Gear!',
-          choices: [{ label: 'Start Archery', action: { type: 'OPEN_MINIGAME', miniGameId: 'archery' } }],
-        },
+        kael_q: { id: 'kael_q', speaker: 'Trainer Kael', speakerRole: 'Coach', portraitKey: 'npc_trainer_kael', text: 'Score points on the range to earn Sparks and a Clockwork Gear!', choices: [{ label: 'Start Archery', action: { type: 'OPEN_MINIGAME', miniGameId: 'archery' } }] },
       };
     }
 
@@ -879,11 +1383,12 @@ export function buildNpcDialogue(npcId: string, save: SaveData): Record<string, 
         root: {
           id: 'root',
           speaker: 'Oliver the Bard',
-          speakerRole: 'Festival Musician',
+          speakerRole: 'Festival & Events Director',
           portraitKey: 'npc_bard_oliver',
-          text: `Music lifts the whole town! Personal best in Harmony Rhythm: ${save.miniGameBestScores.rhythm ?? 0} pts.`,
+          text: `Music & seasonal festivals lift the entire city! Personal best in Harmony Rhythm: ${save.miniGameBestScores.rhythm ?? 0} pts.`,
           choices: [
             { label: 'Play Harmony Rhythm', action: { type: 'OPEN_MINIGAME', miniGameId: 'rhythm' } },
+            { label: 'Switch Brightfall City Event (Christmas / Music / Fireworks)', action: { type: 'OPEN_EVENTS' } },
             { label: 'Later', action: { type: 'CLOSE' } },
           ],
         },
@@ -896,7 +1401,7 @@ export function buildNpcDialogue(npcId: string, save: SaveData): Record<string, 
           speaker: 'Tessa',
           speakerRole: 'Returning Resident',
           portraitKey: 'npc_neighbor_tessa',
-          text: 'Seeing the Café open and neighbors jogging past the park makes Brightfall feel like home again!',
+          text: 'Seeing Brightfall avenues bustling with shoppers, runners, and holiday trees makes Aetheria feel whole again!',
           choices: [{ label: 'Welcome back!', action: { type: 'CLOSE' } }],
         },
       };
@@ -904,68 +1409,25 @@ export function buildNpcDialogue(npcId: string, save: SaveData): Record<string, 
     case 'npc_elder_moss': {
       const defeated = save.defeatedGuardians.includes('woodland_giant');
       const q = save.quests['q_woodland_giant'];
-      const choices: DialogueNode['choices'] = [];
-      if (!q && !defeated) {
-        choices.push({
-          label: 'How can we calm The Woodland Giant?',
-          nextNodeId: 'moss_explain',
-          action: { type: 'START_QUEST', questId: 'q_woodland_giant' },
-        });
-      }
+      const choices: DialogueChoice[] = [];
+      if (!q && !defeated) choices.push({ label: 'How can we calm The Woodland Giant?', nextNodeId: 'moss_explain', action: { type: 'START_QUEST', questId: 'q_woodland_giant' } });
       choices.push({ label: 'Farewell, Elder.', action: { type: 'CLOSE' } });
       return {
-        root: {
-          id: 'root',
-          speaker: 'Elder Moss',
-          speakerRole: 'Keeper of Mossbrook',
-          portraitKey: 'npc_elder_moss',
-          text: defeated
-            ? 'Sylvaron rests peacefully beneath emerald leaves once more!'
-            : 'Sylvaron has been restless in northwest Elderwood Sanctuary since the Great Fall.',
-          choices,
-        },
-        moss_explain: {
-          id: 'moss_explain',
-          speaker: 'Elder Moss',
-          speakerRole: 'Keeper of Mossbrook',
-          portraitKey: 'npc_elder_moss',
-          text: 'Head north from Mossbrook Hamlet and light the 3 Rune Pillars to purify Sylvaron!',
-          choices: [{ label: 'On our way!', action: { type: 'CLOSE' } }],
-        },
+        root: { id: 'root', speaker: 'Elder Moss', speakerRole: 'Keeper of Mossbrook', portraitKey: 'npc_elder_moss', text: defeated ? 'Sylvaron rests peacefully beneath emerald leaves once more!' : 'Sylvaron waits in northwest Elderwood Sanctuary.', choices },
+        moss_explain: { id: 'moss_explain', speaker: 'Elder Moss', speakerRole: 'Keeper', portraitKey: 'npc_elder_moss', text: 'Head north from Mossbrook Hamlet and light the 3 Rune Pillars!', choices: [{ label: 'On our way!', action: { type: 'CLOSE' } }] },
       };
     }
 
     case 'npc_herbalist_fern': {
       const q = save.quests['q_missing_ferns'];
       const ferns = itemCount(save, 'forest_fern');
-      const choices: DialogueNode['choices'] = [];
-      if (!q) {
-        choices.push({
-          label: 'I can gather 3 Whispering Ferns.',
-          nextNodeId: 'fern_a',
-          action: { type: 'START_QUEST', questId: 'q_missing_ferns' },
-        });
-      } else if (q.status === 'active' && ferns >= 3) {
-        choices.push({
-          label: 'Here are the 3 Whispering Ferns!',
-          nextNodeId: 'fern_d',
-          action: { type: 'COMPLETE_QUEST', questId: 'q_missing_ferns' },
-        });
-      }
+      const choices: DialogueChoice[] = [];
+      if (!q) choices.push({ label: 'I can gather 3 Whispering Ferns.', nextNodeId: 'fern_a', action: { type: 'START_QUEST', questId: 'q_missing_ferns' } });
+      else if (q.status === 'active' && ferns >= 3) choices.push({ label: 'Here are the 3 Whispering Ferns!', nextNodeId: 'fern_d', action: { type: 'COMPLETE_QUEST', questId: 'q_missing_ferns' } });
       choices.push({ label: 'Brew herbal tea (Full Heal)', nextNodeId: 'fern_h', action: { type: 'HEAL_PLAYER' } });
       choices.push({ label: 'See you soon', action: { type: 'CLOSE' } });
       return {
-        root: {
-          id: 'root',
-          speaker: 'Herbalist Fern',
-          speakerRole: 'Botanist & Healer',
-          portraitKey: 'npc_herbalist_fern',
-          text:
-            q?.status === 'completed'
-              ? 'Those ferns made wonderful restorative salves!'
-              : `Bring 3 Whispering Ferns from the forest glades (${ferns}/3).`,
-          choices,
-        },
+        root: { id: 'root', speaker: 'Herbalist Fern', speakerRole: 'Botanist & Healer', portraitKey: 'npc_herbalist_fern', text: q?.status === 'completed' ? 'Those ferns made wonderful remedies!' : `Bring 3 Whispering Ferns (${ferns}/3).`, choices },
         fern_a: { id: 'fern_a', speaker: 'Herbalist Fern', speakerRole: 'Botanist', portraitKey: 'npc_herbalist_fern', text: 'Thank you kindly!', choices: [{ label: 'Got it!', action: { type: 'CLOSE' } }] },
         fern_d: { id: 'fern_d', speaker: 'Herbalist Fern', speakerRole: 'Botanist', portraitKey: 'npc_herbalist_fern', text: 'Here are Aether Shards and Sparks in thanks!', choices: [{ label: 'Happy to help!', action: { type: 'CLOSE' } }] },
         fern_h: { id: 'fern_h', speaker: 'Herbalist Fern', speakerRole: 'Botanist', portraitKey: 'npc_herbalist_fern', text: 'Restored Health & Energy!', choices: [{ label: 'Thanks!', action: { type: 'CLOSE' } }] },
@@ -975,70 +1437,43 @@ export function buildNpcDialogue(npcId: string, save: SaveData): Record<string, 
     case 'npc_captain_finn': {
       const defeated = save.defeatedGuardians.includes('tidal_keeper');
       const q = save.quests['q_sunset_lighthouse'];
-      const choices: DialogueNode['choices'] = [];
-      if (!q && !defeated) {
-        choices.push({
-          label: 'Tell me about Sunset Lighthouse & Neridia.',
-          nextNodeId: 'finn_e',
-          action: { type: 'START_QUEST', questId: 'q_sunset_lighthouse' },
-        });
-      }
-      choices.push({ label: 'Smooth seas, Captain!', action: { type: 'CLOSE' } });
       return {
         root: {
           id: 'root',
           speaker: 'Captain Finn',
           speakerRole: 'Driftwood Harbor Master',
           portraitKey: 'npc_captain_finn',
-          text: defeated
-            ? 'Sunset Lighthouse shines across the whole archipelago again!'
-            : 'Neridia out on the eastern Sunken Atoll needs calming before our lighthouse glows steady.',
-          choices,
+          text: defeated ? 'Sunset Lighthouse shines across Aetheria Sea again!' : 'Neridia on eastern Sunken Atoll needs calming before our lighthouse glows steady.',
+          choices: [
+            ...(!q && !defeated ? [{ label: 'Accept Beacon on Sunset Coast Quest', action: { type: 'START_QUEST' as const, questId: 'q_sunset_lighthouse' } }] : []),
+            { label: 'Smooth seas, Captain!', action: { type: 'CLOSE' } },
+          ],
         },
-        finn_e: { id: 'finn_e', speaker: 'Captain Finn', speakerRole: 'Harbor Master', portraitKey: 'npc_captain_finn', text: 'Follow the boardwalk east to Sunken Atoll!', choices: [{ label: 'Anchors aweigh!', action: { type: 'CLOSE' } }] },
       };
     }
 
     case 'npc_angler_marina': {
       const best = save.miniGameBestScores.fishing ?? 0;
       const q = save.quests['q_coastal_catch'];
-      const choices: DialogueNode['choices'] = [
-        { label: 'Cast Line (Tidewater Fishing)', action: { type: 'OPEN_MINIGAME', miniGameId: 'fishing' } },
-      ];
-      if (!q) {
-        choices.push({
-          label: 'Accept Catch of the Sunset Quest!',
-          nextNodeId: 'marina_q',
-          action: { type: 'START_QUEST', questId: 'q_coastal_catch' },
-        });
-      }
-      choices.push({ label: 'Later, Marina!', action: { type: 'CLOSE' } });
       return {
         root: {
           id: 'root',
           speaker: 'Angler Marina',
           speakerRole: 'Pier Champion',
           portraitKey: 'npc_angler_marina',
-          text: `Different weather and times attract rare fish! Your fishing best: ${best} pts.`,
-          choices,
+          text: `Upgrade your Rod, Line, Bait & Hook at the Marina Tackle Shop for rare species! Personal best: ${best} pts.`,
+          choices: [
+            ...(!q ? [{ label: 'Accept Sunset Fishing Quest!', action: { type: 'START_QUEST' as const, questId: 'q_coastal_catch' } }] : []),
+            { label: 'Cast Line (Tidewater Fishing)', action: { type: 'OPEN_MINIGAME', miniGameId: 'fishing' } },
+            { label: 'Later, Marina!', action: { type: 'CLOSE' } },
+          ],
         },
-        marina_q: { id: 'marina_q', speaker: 'Angler Marina', speakerRole: 'Pier Champion', portraitKey: 'npc_angler_marina', text: 'Reel in a coastal catch!', choices: [{ label: 'Let’s fish!', action: { type: 'OPEN_MINIGAME', miniGameId: 'fishing' } }] },
       };
     }
 
     case 'npc_warden_ingrid': {
       const defeated = save.defeatedGuardians.includes('frostbound_watcher');
       const q = save.quests['q_frostpeak_hearth'];
-      const choices: DialogueNode['choices'] = [];
-      if (!q && !defeated) {
-        choices.push({
-          label: 'How do we awaken The Frostbound Watcher?',
-          nextNodeId: 'ingrid_e',
-          action: { type: 'START_QUEST', questId: 'q_frostpeak_hearth' },
-        });
-      }
-      choices.push({ label: 'Warm up by Hearthstone Lodge (Full Heal)', nextNodeId: 'ingrid_h', action: { type: 'HEAL_PLAYER' } });
-      choices.push({ label: 'Stay warm.', action: { type: 'CLOSE' } });
       return {
         root: {
           id: 'root',
@@ -1046,9 +1481,12 @@ export function buildNpcDialogue(npcId: string, save: SaveData): Record<string, 
           speakerRole: 'Hearthstone Guide',
           portraitKey: 'npc_warden_ingrid',
           text: defeated ? 'The summit gale has warmed nicely!' : 'Ignite the 4 Alpine Braziers on Watcher’s Summit northeast!',
-          choices,
+          choices: [
+            ...(!q && !defeated ? [{ label: 'Accept Warmth on Frostpeak Quest', action: { type: 'START_QUEST' as const, questId: 'q_frostpeak_hearth' } }] : []),
+            { label: 'Warm up by Hearthstone Lodge (Full Heal)', nextNodeId: 'ingrid_h', action: { type: 'HEAL_PLAYER' } },
+            { label: 'Stay warm.', action: { type: 'CLOSE' } },
+          ],
         },
-        ingrid_e: { id: 'ingrid_e', speaker: 'Warden Ingrid', speakerRole: 'Guide', portraitKey: 'npc_warden_ingrid', text: 'Climb the switchback to Watcher’s Summit!', choices: [{ label: 'To the summit!', action: { type: 'CLOSE' } }] },
         ingrid_h: { id: 'ingrid_h', speaker: 'Warden Ingrid', speakerRole: 'Guide', portraitKey: 'npc_warden_ingrid', text: 'Health & Energy restored!', choices: [{ label: 'Thanks!', action: { type: 'CLOSE' } }] },
       };
     }
@@ -1072,23 +1510,10 @@ export function buildNpcDialogue(npcId: string, save: SaveData): Record<string, 
       const defeated = save.defeatedGuardians.includes('last_remnant');
       const qMain = save.quests['q_forgotten_kingdom'];
       const qRune = save.quests['q_rune_scholar'];
-      const choices: DialogueNode['choices'] = [];
-      if (!qMain && !defeated) {
-        choices.push({
-          label: 'What really caused the Great Fall?',
-          nextNodeId: 'orin_l',
-          action: { type: 'START_QUEST', questId: 'q_forgotten_kingdom' },
-        });
-      }
-      if (!qRune) {
-        choices.push({
-          label: 'Tell me about the Memory Seal Puzzle.',
-          nextNodeId: 'orin_r',
-          action: { type: 'START_QUEST', questId: 'q_rune_scholar' },
-        });
-      } else {
-        choices.push({ label: 'Play Ancient Rune Memory Seal', action: { type: 'OPEN_MINIGAME', miniGameId: 'runememory' } });
-      }
+      const choices: DialogueChoice[] = [];
+      if (!qMain && !defeated) choices.push({ label: 'What really caused the Great Fall?', action: { type: 'START_QUEST', questId: 'q_forgotten_kingdom' } });
+      if (!qRune) choices.push({ label: 'Tell me about the Memory Seal Puzzle.', action: { type: 'START_QUEST', questId: 'q_rune_scholar' } });
+      else choices.push({ label: 'Play Ancient Rune Memory Seal', action: { type: 'OPEN_MINIGAME', miniGameId: 'runememory' } });
       choices.push({ label: 'Farewell.', action: { type: 'CLOSE' } });
       return {
         root: {
@@ -1097,175 +1522,209 @@ export function buildNpcDialogue(npcId: string, save: SaveData): Record<string, 
           speakerRole: 'Scholar of the Dawn',
           portraitKey: 'npc_archivist_orin',
           text: defeated
-            ? 'Golden light crowns the Dawn Sanctum! Yet across the northwest ocean, The Lost Kingdom still holds older memories.'
+            ? 'Golden light crowns the Dawn Sanctum! Yet across the northwest ocean, The Lost Kingdom holds older secrets.'
             : `Ahead lies the Dawn Sanctum and Aurelius, The Last Remnant, ${charId === 'chronomancer' ? 'Sora' : 'traveler'}.`,
           choices,
         },
-        orin_l: { id: 'orin_l', speaker: 'Archivist Orin', speakerRole: 'Scholar', portraitKey: 'npc_archivist_orin', text: 'Purify Aurelius at the Sanctum north of here!', choices: [{ label: 'Ready!', action: { type: 'CLOSE' } }] },
-        orin_r: { id: 'orin_r', speaker: 'Archivist Orin', speakerRole: 'Scholar', portraitKey: 'npc_archivist_orin', text: 'Solve the Memory Seal to awaken Sora, The Dawnkeeper!', choices: [{ label: 'Play Memory Seal', action: { type: 'OPEN_MINIGAME', miniGameId: 'runememory' } }] },
       };
     }
 
-    // 6 ISLANDS NPCS
-    case 'npc_freya_frost': {
+    // 6 ISLAND CAMPAIGN HUBS (with dynamic 1..20 chapter progression!)
+    case 'npc_freya_frost':
+    case 'npc_icecarver_bjorn': {
+      const doneCount = getIslandCampaignCompletedCount(save, 'frozen_kingdom');
       const done = save.defeatedGuardians.includes('frost_empress');
-      const q = save.quests['q_frozen_kingdom'];
+      const choices: DialogueChoice[] = [];
+      appendCampaignChoices(save, 'frozen_kingdom', choices);
+      if (npcId === 'npc_icecarver_bjorn') {
+        choices.push({ label: 'Fish the Frozen Fjord', action: { type: 'OPEN_MINIGAME', miniGameId: 'fishing' } });
+      } else {
+        choices.push({ label: 'Enter Frozen Spire Dungeon', action: { type: 'ENTER_ZONE', interiorId: 'int_dungeon_frozen' } });
+        choices.push({ label: 'Warm up by Frosthaven Hearth (Heal)', action: { type: 'HEAL_PLAYER' } });
+      }
+      choices.push({ label: 'Explore Frozen Kingdom', action: { type: 'CLOSE' } });
+      const isBjorn = npcId === 'npc_icecarver_bjorn';
       return {
         root: {
           id: 'root',
-          speaker: 'Freya',
-          speakerRole: 'Frosthaven Mayor',
-          portraitKey: 'npc_freya_frost',
+          speaker: isBjorn ? 'Fjord Angler Bjorn' : 'Mayor Freya',
+          speakerRole: isBjorn ? 'Frozen Kingdom Harvester' : `Frosthaven Mayor · Campaign ${doneCount}/20`,
+          portraitKey: npcId,
           text: done
-            ? 'Aurora ribbons are dancing over Frosthaven again! Enjoy the Alpine Parka outfit.'
-            : 'Welcome to The Frozen Kingdom! North atop the Glacier Spire, Glacius the Frost Empress has frozen our harbour winds.',
-          choices: [
-            ...(!q && !done ? [{ label: 'I will help thaw Frosthaven!', action: { type: 'START_QUEST' as const, questId: 'q_frozen_kingdom' } }] : []),
-            { label: 'Warm up by Frosthaven Hearth (Full Heal)', action: { type: 'HEAL_PLAYER' } },
-            { label: 'Farewell', action: { type: 'CLOSE' } },
-          ],
+            ? 'Aurora ribbons are dancing over Frosthaven again! Glacius rests peacefully.'
+            : `Frozen Kingdom Campaign Progress: ${doneCount}/20 chapters completed. Complete chapter ${Math.min(20, doneCount + 1)} (or enter Frozen Spire Dungeon) to draw closer to unsealing Empress Glacius!`,
+          choices,
+        },
+        campaign_started: {
+          id: 'campaign_started',
+          speaker: isBjorn ? 'Fjord Angler Bjorn' : 'Mayor Freya',
+          speakerRole: 'Frozen Kingdom',
+          portraitKey: npcId,
+          text: 'Chapter started and added to your Quests journal!',
+          choices: [{ label: 'Onward!', action: { type: 'CLOSE' } }],
         },
       };
     }
-    case 'npc_icecarver_bjorn':
-      return {
-        root: {
-          id: 'root',
-          speaker: 'Bjorn',
-          speakerRole: 'Fjord Angler',
-          portraitKey: 'npc_icecarver_bjorn',
-          text: 'Cast your line right here in the northern fjord—you might hook a rare Glacier Crystal Char!',
-          choices: [
-            { label: 'Fish in Frozen Fjord', action: { type: 'OPEN_MINIGAME', miniGameId: 'fishing' } },
-            { label: 'Try Ice Slide on Fjord', action: { type: 'OPEN_MINIGAME', miniGameId: 'timeslide' } },
-            { label: 'Stay warm!', action: { type: 'CLOSE' } },
-          ],
-        },
-      };
-    case 'npc_kora_jungle': {
+
+    case 'npc_kora_jungle':
+    case 'npc_botanist_tali': {
+      const doneCount = getIslandCampaignCompletedCount(save, 'wild_jungle');
       const done = save.defeatedGuardians.includes('jungle_titan');
-      const q = save.quests['q_wild_jungle'];
+      const choices: DialogueChoice[] = [];
+      appendCampaignChoices(save, 'wild_jungle', choices);
+      if (npcId === 'npc_botanist_tali') {
+        choices.push({ label: 'Fish Jungle River Bend', action: { type: 'OPEN_MINIGAME', miniGameId: 'fishing' } });
+      } else {
+        choices.push({ label: 'Enter Waterfall Temple Dungeon', action: { type: 'ENTER_ZONE', interiorId: 'int_dungeon_jungle' } });
+        choices.push({ label: 'Rest at Canopy Camp (Heal)', action: { type: 'HEAL_PLAYER' } });
+      }
+      choices.push({ label: 'Explore Wild Jungle', action: { type: 'CLOSE' } });
+      const isTali = npcId === 'npc_botanist_tali';
       return {
         root: {
           id: 'root',
-          speaker: 'Kora',
-          speakerRole: 'Canopy Ranger',
-          portraitKey: 'npc_kora_jungle',
+          speaker: isTali ? 'Botanist Tali' : 'Ranger Kora',
+          speakerRole: isTali ? 'Orchid Researcher' : `Canopy Ranger · Campaign ${doneCount}/20`,
+          portraitKey: npcId,
           text: done
-            ? 'The Waterfall Temple sings again and Canopy Sun-Orchids are blooming!'
-            : 'Welcome to The Wild Jungle! Head northwest into the dense canopy to find Zulra, The Jungle Titan.',
-          choices: [
-            ...(!q && !done ? [{ label: 'Accept Wild Jungle Quest!', action: { type: 'START_QUEST' as const, questId: 'q_wild_jungle' } }] : []),
-            { label: 'Target Practice in the Canopy', action: { type: 'OPEN_MINIGAME', miniGameId: 'archery' } },
-            { label: 'Explore the jungle', action: { type: 'CLOSE' } },
-          ],
+            ? 'The Wild Jungle blooms effortlessly once again!'
+            : `Wild Jungle Campaign Progress: ${doneCount}/20 chapters completed. Unseal Waterfall Temple to challenge Zulra!`,
+          choices,
+        },
+        campaign_started: {
+          id: 'campaign_started',
+          speaker: isTali ? 'Botanist Tali' : 'Ranger Kora',
+          speakerRole: 'Wild Jungle',
+          portraitKey: npcId,
+          text: 'Jungle chapter added to your Quests journal!',
+          choices: [{ label: 'Into the canopy!', action: { type: 'CLOSE' } }],
         },
       };
     }
-    case 'npc_botanist_tali':
-      return {
-        root: {
-          id: 'root',
-          speaker: 'Tali',
-          speakerRole: 'Orchid Researcher',
-          portraitKey: 'npc_botanist_tali',
-          text: 'Tropical rainstorms here wake up the rare Mistfall Rain Koi in our rivers!',
-          choices: [
-            { label: 'Cast a line in the Jungle River', action: { type: 'OPEN_MINIGAME', miniGameId: 'fishing' } },
-            { label: 'Rest at Camp (Full Heal)', action: { type: 'HEAL_PLAYER' } },
-            { label: 'Bye Tali!', action: { type: 'CLOSE' } },
-          ],
-        },
-      };
-    case 'npc_flint_volcanic': {
+
+    case 'npc_flint_volcanic':
+    case 'npc_miner_cinder': {
+      const doneCount = getIslandCampaignCompletedCount(save, 'volcanic_island');
       const done = save.defeatedGuardians.includes('magma_colossus');
-      const q = save.quests['q_volcanic_island'];
+      const choices: DialogueChoice[] = [];
+      appendCampaignChoices(save, 'volcanic_island', choices);
+      if (npcId === 'npc_miner_cinder') {
+        choices.push({ label: 'Fish Thermal Coastal Vents', action: { type: 'OPEN_MINIGAME', miniGameId: 'fishing' } });
+      } else {
+        choices.push({ label: 'Enter Caldera Magma Dungeon', action: { type: 'ENTER_ZONE', interiorId: 'int_dungeon_volcanic' } });
+        choices.push({ label: 'Cool off at Hot Springs (Heal)', action: { type: 'HEAL_PLAYER' } });
+      }
+      choices.push({ label: 'Explore Volcanic Island', action: { type: 'CLOSE' } });
+      const isCinder = npcId === 'npc_miner_cinder';
       return {
         root: {
           id: 'root',
-          speaker: 'Master Flint',
-          speakerRole: 'Emberforge Foreman',
-          portraitKey: 'npc_flint_volcanic',
+          speaker: isCinder ? 'Prospector Cinder' : 'Master Flint',
+          speakerRole: isCinder ? 'Volcanic Ore Scout' : `Emberforge Foreman · Campaign ${doneCount}/20`,
+          portraitKey: npcId,
           text: done
-            ? 'The magma vents settled and Ember the Pyromancer is thrilled to travel with you!'
-            : 'Watch your step on the basalt bridges! Ignis the Magma Colossus is overheating north of Emberforge Camp.',
-          choices: [
-            ...(!q && !done ? [{ label: 'Accept Volcanic Island Quest!', action: { type: 'START_QUEST' as const, questId: 'q_volcanic_island' } }] : []),
-            { label: 'Cool off & Heal', action: { type: 'HEAL_PLAYER' } },
-            { label: 'Onward!', action: { type: 'CLOSE' } },
-          ],
+            ? 'Emberforge vents hum steady and Pyromancer Ember walks among us!'
+            : `Volcanic Island Campaign Progress: ${doneCount}/20 chapters completed. Cool the caldera mechanisms to unseal Ignis!`,
+          choices,
+        },
+        campaign_started: {
+          id: 'campaign_started',
+          speaker: isCinder ? 'Prospector Cinder' : 'Master Flint',
+          speakerRole: 'Volcanic Island',
+          portraitKey: npcId,
+          text: 'Forge chapter accepted!',
+          choices: [{ label: 'To the ridge!', action: { type: 'CLOSE' } }],
         },
       };
     }
-    case 'npc_miner_cinder':
-      return {
-        root: {
-          id: 'root',
-          speaker: 'Cinder',
-          speakerRole: 'Ore Prospector',
-          portraitKey: 'npc_miner_cinder',
-          text: 'Gather Basalt Ember Ore around the ridge—Smith Garrick back in Brightfall can forge it into the Emberforge Hammer!',
-          choices: [{ label: 'Good tip!', action: { type: 'CLOSE' } }],
-        },
-      };
-    case 'npc_caelum_sky': {
+
+    case 'npc_zephyr_sky': {
+      const doneCount = getIslandCampaignCompletedCount(save, 'sky_island');
       const done = save.defeatedGuardians.includes('sky_seraph');
-      const q = save.quests['q_sky_island'];
+      const choices: DialogueChoice[] = [];
+      appendCampaignChoices(save, 'sky_island', choices);
+      choices.push({ label: 'Enter Sky Temple Dungeon', action: { type: 'ENTER_ZONE', interiorId: 'int_dungeon_sky' } });
+      choices.push({ label: 'Play Wind-Chime Rhythm', action: { type: 'OPEN_MINIGAME', miniGameId: 'rhythm' } });
+      choices.push({ label: 'Explore Sky Island', action: { type: 'CLOSE' } });
       return {
         root: {
           id: 'root',
-          speaker: 'Caelum',
-          speakerRole: 'Cloudspire Keeper',
-          portraitKey: 'npc_caelum_sky',
+          speaker: 'Wind-Keeper Zephyr',
+          speakerRole: `Cloudspire Keeper · Campaign ${doneCount}/20`,
+          portraitKey: 'npc_zephyr_sky',
           text: done
-            ? 'Skywarden Aero joined your ranks and Cloudspire’s wind-bridges hum in harmony!'
-            : 'Welcome atop The Sky Island! Cross the marble sky bridge north to harmonize Zephyra, The Sky Seraph.',
-          choices: [
-            ...(!q && !done ? [{ label: 'Accept Sky Island Quest!', action: { type: 'START_QUEST' as const, questId: 'q_sky_island' } }] : []),
-            { label: 'Play Wind-Chime Rhythm', action: { type: 'OPEN_MINIGAME', miniGameId: 'rhythm' } },
-            { label: 'Explore Cloudspire', action: { type: 'CLOSE' } },
-          ],
+            ? 'Skywarden Aero joined your team and Cloudspire wind-bridges sing!'
+            : `Sky Island Campaign Progress: ${doneCount}/20 chapters completed. Align the wind-turbines and Sky Temple to awaken Zephyra!`,
+          choices,
+        },
+        campaign_started: {
+          id: 'campaign_started',
+          speaker: 'Wind-Keeper Zephyr',
+          speakerRole: 'Sky Island',
+          portraitKey: 'npc_zephyr_sky',
+          text: 'Cloudspire chapter started!',
+          choices: [{ label: 'To the skies!', action: { type: 'CLOSE' } }],
         },
       };
     }
-    case 'npc_edgar_haunted': {
+
+    case 'npc_ghost_bramwell': {
+      const doneCount = getIslandCampaignCompletedCount(save, 'haunted_island');
       const done = save.defeatedGuardians.includes('phantom_duke');
-      const q = save.quests['q_haunted_island'];
+      const choices: DialogueChoice[] = [];
+      appendCampaignChoices(save, 'haunted_island', choices);
+      choices.push({ label: 'Enter Mistvale Castle Dungeon', action: { type: 'ENTER_ZONE', interiorId: 'int_dungeon_haunted' } });
+      choices.push({ label: 'Fish Mistvale Lagoon', action: { type: 'OPEN_MINIGAME', miniGameId: 'fishing' } });
+      choices.push({ label: 'Step into the mist', action: { type: 'CLOSE' } });
       return {
         root: {
           id: 'root',
-          speaker: 'Caretaker Edgar',
-          speakerRole: 'Mistvale Historian',
-          portraitKey: 'npc_edgar_haunted',
+          speaker: 'Chronicler Bramwell',
+          speakerRole: `Mistvale Historian · Campaign ${doneCount}/20`,
+          portraitKey: 'npc_ghost_bramwell',
           text: done
-            ? 'Mistvale Castle glows gently in the moonlight now. Vesper finally rests easy.'
-            : 'Don’t fear Mistvale’s fog—it’s only loneliness. Light the lanterns around Vesper, The Phantom Duke in the castle courtyard northwest.',
-          choices: [
-            ...(!q && !done ? [{ label: 'Accept Haunted Island Quest!', action: { type: 'START_QUEST' as const, questId: 'q_haunted_island' } }] : []),
-            { label: 'Fish Mistvale Lagoon', action: { type: 'OPEN_MINIGAME', miniGameId: 'fishing' } },
-            { label: 'Into the mist', action: { type: 'CLOSE' } },
-          ],
+            ? 'Mistvale Castle glows warm under moonbeams—Duke Vesper rests peacefully.'
+            : `Haunted Island Campaign Progress: ${doneCount}/20 chapters completed. Uncover Mistvale Manor’s secrets to help Duke Vesper!`,
+          choices,
+        },
+        campaign_started: {
+          id: 'campaign_started',
+          speaker: 'Chronicler Bramwell',
+          speakerRole: 'Haunted Island',
+          portraitKey: 'npc_ghost_bramwell',
+          text: 'Haunted Island chapter added!',
+          choices: [{ label: 'Keep searching', action: { type: 'CLOSE' } }],
         },
       };
     }
-    case 'npc_seraphina_lost': {
+
+    case 'npc_vaelen_lost': {
+      const doneCount = getIslandCampaignCompletedCount(save, 'lost_kingdom');
       const done = save.defeatedGuardians.includes('eclipse_sovereign');
-      const q = save.quests['q_lost_kingdom'];
+      const choices: DialogueChoice[] = [];
+      appendCampaignChoices(save, 'lost_kingdom', choices);
+      choices.push({ label: 'Enter Eclipse Sanctum Dungeon', action: { type: 'ENTER_ZONE', interiorId: 'int_dungeon_lost' } });
+      choices.push({ label: 'Attempt Ancient Rune Memory', action: { type: 'OPEN_MINIGAME', miniGameId: 'runememory' } });
+      choices.push({ label: 'Restore Health & Energy', action: { type: 'HEAL_PLAYER' } });
+      choices.push({ label: 'Step toward the Citadel', action: { type: 'CLOSE' } });
       return {
         root: {
           id: 'root',
-          speaker: 'Queen Seraphina',
-          speakerRole: 'Memory of the Lost Capital',
-          portraitKey: 'npc_seraphina_lost',
+          speaker: 'Sentinel Vaelen',
+          speakerRole: `Lost Capital Warden · Campaign ${doneCount}/20`,
+          portraitKey: 'npc_vaelen_lost',
           text: done
-            ? 'You united every island and every community across Aetheria. Truly, Aetheria has bounced back!'
-            : 'You reached The Lost Kingdom—the cradle of Aetheria before the Great Fall. North in the Obsidian Citadel awaits Aetherion, The Eclipse Sovereign.',
-          choices: [
-            ...(!q && !done ? [{ label: 'I will awaken Aetherion!', action: { type: 'START_QUEST' as const, questId: 'q_lost_kingdom' } }] : []),
-            { label: 'Attempt Ancient Rune Memory', action: { type: 'OPEN_MINIGAME', miniGameId: 'runememory' } },
-            { label: 'Restore Health & Energy', action: { type: 'HEAL_PLAYER' } },
-            { label: 'Step toward the Citadel', action: { type: 'CLOSE' } },
-          ],
+            ? 'All of Aetheria radiates golden harmony! You gave our entire world its Bounce Back.'
+            : `Lost Kingdom Campaign Progress: ${doneCount}/20 chapters completed. Complete the capital’s trials to challenge Aetherion!`,
+          choices,
+        },
+        campaign_started: {
+          id: 'campaign_started',
+          speaker: 'Sentinel Vaelen',
+          speakerRole: 'Lost Kingdom',
+          portraitKey: 'npc_vaelen_lost',
+          text: 'Royal chapter accepted!',
+          choices: [{ label: 'Forward!', action: { type: 'CLOSE' } }],
         },
       };
     }
@@ -1282,4 +1741,16 @@ export function buildNpcDialogue(npcId: string, save: SaveData): Record<string, 
         },
       };
   }
+}
+
+export function getGuardianLockReason(save: SaveData, guardianId: keyof typeof GUARDIANS): string | null {
+  const g = GUARDIANS[guardianId];
+  if (!g.requiredCampaignCount) return null;
+  const done = getIslandCampaignCompletedCount(save, g.region);
+  if (done >= g.requiredCampaignCount) return null;
+  return `${g.name} is sealed! Complete ${g.requiredCampaignCount} ${g.region.replace('_', ' ')} campaign chapters (${done}/${g.requiredCampaignCount} done) or claim ready chapters in Quests [J].`;
+}
+
+export function getQuestSummaryTitle(questId: string): string {
+  return QUESTS[questId]?.title ?? questId;
 }
